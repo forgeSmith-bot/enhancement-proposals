@@ -58,11 +58,11 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 - As a Cloud Infrastructure Admin, I want to list all BareMetalInstances and their network metadata via the API or CLI, so that I can verify agent-to-instance mapping across the fleet and identify any unmapped hosts to troubleshoot cluster deployment failures.
 - As a Cloud Infrastructure Admin, I want the CLI and API to gracefully display `N/A` or empty fields when backend inventory network metadata is missing, so that I can easily identify incomplete inventory records and troubleshoot configuration issues without encountering system errors or failing the provisioning process.
-- **Conditional / Fallback Story:** As a Cloud Infrastructure Admin, if the existing platform status refresh capability is found to be missing or insufficient, I want the BareMetalInstance network metadata to remain current automatically, so that I can trust the displayed values without manual refresh.
+- As a Cloud Infrastructure Admin, I want the BareMetalInstance network metadata to remain current automatically when changes occur in the backend inventory, so that I can trust the displayed values without performing manual refreshes.
 
 ### Tenant Admin
 
-Not affected by this feature, as Tenant Admins manage tenant-level policies and access controls rather than individual instance-level network metadata.
+- As a Tenant Admin, I want to view tenant-scoped aggregate visibility of all BareMetalInstances within my tenant namespace, including identifying which instances are missing network metadata, so that I can monitor provisioning completeness and assist Tenant Users with network connectivity troubleshooting.
 
 ### Tenant User
 
@@ -76,19 +76,19 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 - [ ] **CLI Output Formatting:** The OSAC CLI command `osac baremetalinstance describe <name>` displays the host's boot MAC and primary IP in a dedicated network metadata table structure.
 - [ ] **Negative Scenarios and Fail-Safe Behavior:** If the backend inventory lacks IP address metadata for an assigned host, the `BareMetalInstance` status successfully exposes the boot MAC address, while the primary IP address field remains empty without causing provisioning errors. In this scenario, the OSAC CLI command `osac baremetalinstance describe <name>` displays `N/A` in the primary IP address field rather than omitting the field, displaying empty columns, or failing.
 - [ ] **Agent Correlation Workflow:** A CaaS cluster installation automatically correlates an Assisted Installer agent with the correct BareMetalInstance using the exposed boot MAC address, and the cluster installation proceeds to completion without manual host pairing by an administrator.
-- [ ] **Conditional Metadata Synchronization Fallback:** If the platform's existing status refresh capability is validated as missing or insufficient during initial testing, the BareMetalInstance status metadata must reflect current backend inventory data within 10 minutes of any change, without manual user or administrator intervention.
+- [ ] **Metadata Synchronization:** The BareMetalInstance status metadata must automatically reflect current backend inventory data within 10 minutes of any change, without manual user or administrator intervention.
 
 ## Assumptions
 
 - **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts. [Assumption]
 - **Network Connectivity:** The host's primary IP address surfaced in the inventory is reachable over the tenant's VirtualNetwork (rather than only on an infrastructure-level network) once the instance is powered on, enabling self-service Tenant User SSH connections. [Assumption]
-- **Existing Synchronization Capability:** The OSAC platform possesses an existing capability that automatically keeps BareMetalInstance status updated with backend inventory changes. This capability will be validated early in the cycle, and if it is found to be insufficient, the system must automatically ensure metadata remains current without requiring manual user or administrator intervention. [Assumption]
+- **Metadata Synchronization:** The platform supports automatic synchronization, ensuring any updates or changes in the backend host network inventory are automatically propagated and kept current in the BareMetalInstance status without manual user or administrator intervention. [Assumption]
 
 ## Dependencies
 
 - **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and primary IP address metadata to enable propagation to the instance status.
 - **CaaS / Assisted Installer Integration:** The cluster installer must be capable of consuming the exposed status metadata of the `BareMetalInstance` to correlate registered installer agents.
-- **BareMetalInstance Status Refresh Validation:** Validate that the existing platform capability can keep BareMetalInstance metadata current. Detailed commitments, SLA metrics, fallback timelines, and delivery obligations have been relocated to the owning epic or design document.
+- **BareMetalInstance Status Refresh:** The platform capability to automatically keep BareMetalInstance metadata synchronized with backend inventory updates. Detailed commitments, SLA metrics, and delivery obligations have been relocated to the owning epic or design document.
 
 ## Risks
 
