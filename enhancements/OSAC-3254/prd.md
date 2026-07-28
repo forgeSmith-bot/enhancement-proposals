@@ -15,7 +15,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 ## In Scope
 
-- **Automatic Metadata Propagation:** The BareMetalInstance status includes the boot MAC address and primary IP address once the instance is provisioned.
+- **Host network identity in status:** The BareMetalInstance status includes the boot MAC address and primary IP address once the instance is provisioned.
 - **Status Field Exposure:** Surfacing the physical host's boot MAC address in the BareMetalInstance status.
 - **IP Address Exposure:** Surfacing the physical host's primary IP address (when available in the inventory backend) in the BareMetalInstance status.
 - **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that downstream services and automation can programmatically consume them.
@@ -54,7 +54,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 ### Cloud Infrastructure Admin
 
-- As a Cloud Infrastructure Admin, I want CaaS to automatically read the boot MAC address of a provisioned BareMetalInstance so that CaaS can correlate the instance with the Assisted Installer agent registering from that host without manual pairing.
+- As a Cloud Infrastructure Admin, I want to verify that CaaS has automatically correlated Assisted Installer agents with the correct BareMetalInstances using their boot MAC addresses, so that cluster deployments proceed without manual intervention.
 
 ### Tenant Admin
 
