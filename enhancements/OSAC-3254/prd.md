@@ -40,6 +40,8 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
   - Automated DNS registration for BareMetalInstance IPs (deferred to subsequent milestone).
   - Visualization of MAC and IP metadata in the OSAC Web Console (deferred to subsequent UI epic).
   - Advanced Multi-NIC mapping and full interface status schemas (deferred to future milestone).
+- **Upgrades and Backward Compatibility:**
+  - Since this feature introduces new optional status fields (`status.bootMacAddress` and `status.primaryIpAddress`) without modifying existing mandatory schemas or spec structures, it is fully backward-compatible. Existing BareMetalInstances will simply have these fields populated upon their next status refresh or reconcile cycle, with no impact or disruption to existing workloads or APIs.
 - **E2E Testing Expectations:**
   - *Automated E2E Tests:* The metadata propagation workflow from provisioning completion to API/CLI verification, tenant isolation boundaries, and the negative scenarios (empty IP address/N/A CLI output) must be verified through automated end-to-end integration test suites.
   - *Manual Verification / Integration Testing:* The end-to-end integration flow of CaaS agent correlation using the boot MAC address will be verified through integrated staging environment runs prior to milestone completion.
@@ -52,7 +54,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 ### Cloud Infrastructure Admin
 
-- As a Cloud Infrastructure Admin, I want to monitor the automatic correlation status of Assisted Installer agents across the fleet and identify any correlation failures, so that I can troubleshoot provisioning issues quickly and ensure successful cluster deployments.
+- As a Cloud Infrastructure Admin, I want to list all BareMetalInstances and their network metadata via the API or CLI, so that I can verify agent-to-instance mapping across the fleet and identify any unmapped hosts to troubleshoot cluster deployment failures.
 
 ### Tenant Admin
 
@@ -75,7 +77,7 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 
 - **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts. [Assumption]
 - **Network Connectivity:** The host's primary IP address surfaced in the inventory is reachable over the tenant's VirtualNetwork or configured routing pathways once the instance is powered on. [Assumption]
-- **Existing Synchronization Capability:** The OSAC platform already possesses an existing capability for administrators to trigger a status refresh of a BareMetalInstance, which will be leveraged to update stale metadata without introducing new user-facing actions or APIs. [Assumption]
+- **Existing Synchronization Capability:** The OSAC platform already possesses an existing capability for administrators to trigger a status refresh of a BareMetalInstance, which will be leveraged to update stale metadata without introducing new user-facing actions or APIs. [Assumption] *Validation Note: Prior to implementation, the existence and documentation of this capability must be explicitly validated; if it is found to be missing or insufficient, a dedicated refresh API or synchronization mechanism must be added to the project dependencies.*
 
 ## Dependencies
 
