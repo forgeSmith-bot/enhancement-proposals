@@ -41,7 +41,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
   - Visualization of MAC and IP metadata in the OSAC Web Console (deferred to subsequent UI epic).
   - Advanced Multi-NIC mapping and full interface status schemas (deferred to future milestone).
 - **Upgrades and Backward Compatibility:**
-  - Since this feature introduces new optional status fields (`status.bootMacAddress` and `status.primaryIpAddress`) without modifying existing mandatory schemas or spec structures, it is fully backward-compatible. Existing BareMetalInstances will simply have these fields populated upon their next status update, with no impact or disruption to existing workloads or APIs.
+  - Since this feature introduces new optional status fields (`status.bootMacAddress` and `status.primaryIpAddress`) without modifying existing API response contracts, it is fully backward-compatible. Existing BareMetalInstances will simply have these fields populated upon their next status update, with no impact or disruption to existing workloads or APIs.
 - **E2E Testing Expectations:**
   - *Automated E2E Tests:* The metadata propagation workflow from provisioning completion to API/CLI verification, tenant isolation boundaries, and the negative scenarios (empty IP address/N/A CLI output) must be verified through automated end-to-end integration test suites.
   - *Manual Verification / Integration Testing:* The end-to-end integration flow of CaaS agent correlation using the boot MAC address will be verified through integrated staging environment runs prior to milestone completion.
@@ -66,7 +66,7 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 
 ## Acceptance Criteria
 
-- [ ] **Metadata Availability:** The boot MAC address and primary IP address are populated and available when the `BareMetalInstance` status shows `Ready`. *Rationale: Guaranteeing that network metadata is available when the instance is marked Ready ensures downstream automation services can immediately consume it.*
+- [ ] **Metadata Availability:** The boot MAC address and primary IP address are populated and available in the `BareMetalInstance` status within 60 seconds of the instance transitioning to `Ready`. *Rationale: Guaranteeing that network metadata is available with minimal latency once the instance is marked Ready ensures downstream automation services can immediately and reliably consume it.*
 - [ ] **Tenant Isolation Boundaries:** A Tenant User can only retrieve the MAC and IP metadata for `BareMetalInstances` within their authorized tenant namespace; requests to retrieve instances in other namespaces are blocked.
 - [ ] **API Payload Integrity:** The `GET /v1/baremetalinstances` (List) and `GET /v1/baremetalinstances/{id}` (Get) endpoints return the correct `status.bootMacAddress` and `status.primaryIpAddress` fields in the response payload.
 - [ ] **CLI Output Formatting:** The OSAC CLI command `osac baremetalinstance describe <name>` displays the host's boot MAC and primary IP in a dedicated network metadata table structure.
@@ -83,13 +83,15 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 
 - **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and primary IP address metadata to enable propagation to the instance status.
 - **CaaS / Assisted Installer Integration:** The cluster installer must be capable of consuming the exposed status metadata of the `BareMetalInstance` to correlate registered installer agents.
-- **BareMetalInstance Status Refresh Validation:** Prior to implementation, the platform's existing status refresh capability must be validated to ensure it can update stale metadata. If it is found to be missing or insufficient, a dedicated refresh API or synchronization mechanism must be added to the project dependencies.
+- **BareMetalInstance Status Refresh Validation:**
+  - *Validation Criteria:* The platform's existing status refresh mechanism must be verified by Day 5 of the design phase to confirm it can dynamically poll the backend inventory and force-update status fields without requiring a full instance reboot.
+  - *Fallback Plan & Timeline:* If the existing refresh capability is found to be missing or insufficient, a dedicated background reconciliation loop and a user-triggered synchronization API must be designed and implemented. The development of this fallback synchronization capability must be scheduled as a blocker task starting by Day 10 of the milestone, with 3 additional days allocated to implementation to prevent blocking downstream features.
 
 ## Risks
 
 - **Stale or Incorrect Inventory Metadata:**
   - *Risk:* The physical host inventory backend contains stale or incorrect MAC or IP address metadata, causing CaaS to fail agent correlation or preventing Tenant Users from connecting.
-  - *Impact / Mitigation:* This is mitigated by ensuring that the status propagation occurs dynamically, and by displaying `N/A` or empty fields when the backend lacks reliable data rather than failing provisioning. Downstream services must handle metadata mismatches gracefully. Since OSAC administrators can leverage the existing platform capability to trigger a status refresh of the BareMetalInstance, they can resolve temporary discrepancies between the physical backend and the BareMetalInstance status without requiring any new UI/CLI APIs. (Note: If the platform's existing refresh capability is found to be missing or insufficient, a dedicated refresh API or synchronization mechanism must be introduced as a project dependency).
+  - *Impact / Mitigation:* This is mitigated by ensuring that the status propagation occurs dynamically, and by displaying `N/A` or empty fields when the backend lacks reliable data rather than failing provisioning. Downstream services must handle metadata mismatches gracefully. Since OSAC administrators can leverage the platform's status refresh capability to trigger a status refresh of the BareMetalInstance, they can resolve temporary discrepancies between the physical backend and the BareMetalInstance status without requiring any new UI/CLI APIs. If the platform's existing refresh capability is found to be missing or insufficient during the validation phase, the fallback plan (background reconciliation loop and synchronization API) will be triggered within the specified timeline.
 - **Metadata Drift Post-Propagation:**
   - *Risk:* If a physical host's primary IP address is reassigned or modified in the backend inventory after successful propagation, the BareMetalInstance status could become out-of-sync.
   - *Impact / Mitigation:* The propagated status represents a point-of-provisioning snapshot. Any backend inventory updates that occur after the BareMetalInstance has reached the `Ready` state will not automatically overwrite the status unless a manual re-synchronization or instance reboot is initiated by a Cloud Provider Admin.
