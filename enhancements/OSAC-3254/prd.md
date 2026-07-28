@@ -67,6 +67,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 ### Tenant User
 
 - As a Tenant User, I want to see the primary IP address and MAC address of my provisioned BareMetalInstance via the CLI or API, so that I can configure my local SSH clients and network routes to connect to my newly deployed instance.
+- As a Tenant User, I want the CLI and API to gracefully display `N/A` or empty fields when my instance's primary IP address is unavailable in the backend inventory, so that I am clearly informed of the missing network identity without encountering client formatting errors or experiencing system crashes.
 
 ## Acceptance Criteria
 
@@ -84,7 +85,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 ## Assumptions
 
 - **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts. [Assumption]
-- **Metadata Synchronization:** The platform supports automatic synchronization, ensuring any updates or changes in the backend host network inventory are automatically propagated and kept current in the BareMetalInstance status without manual user or administrator intervention. [Assumption]
+- **Platform Sync Infrastructure Prerequisite:** It is assumed that the platform's core synchronization infrastructure is available to trigger updates. The delivery of this feature relies on this existing infrastructure to propagate backend inventory changes, while the specific mapping, status updates, 10-minute SLA verification, and observability timestamp are in-scope deliverables of this issue. [Assumption]
 
 ## Dependencies
 
