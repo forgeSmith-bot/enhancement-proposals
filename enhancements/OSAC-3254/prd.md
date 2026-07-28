@@ -63,11 +63,11 @@ Not affected by this feature.
 
 ## Acceptance Criteria
 
-- [ ] **Metadata Propagation Latency:** The boot MAC address and primary IP address are populated in the `BareMetalInstance` status within 5 seconds of the instance reaching the `Ready` state (this threshold is aligned with the CaaS agent registration polling interval of 10 seconds, ensuring that metadata is consistently propagated and available before CaaS triggers its next discovery cycle to prevent correlation timeouts).
+- [ ] **Metadata Propagation Latency:** The boot MAC address and primary IP address are populated in the `BareMetalInstance` status within 5 seconds of the instance reaching the `Ready` state. *Rationale: CaaS polls the BareMetalInstance API every 10 seconds during cluster installation; a 5-second propagation threshold ensures metadata is available on the first poll, preventing unnecessary retry delays.*
 - [ ] **Tenant Isolation Boundaries:** A Tenant User can only retrieve the MAC and IP metadata for `BareMetalInstances` within their authorized tenant namespace; requests to retrieve instances in other namespaces are blocked.
 - [ ] **API Payload Integrity:** The `GET /v1/baremetalinstances` (List) and `GET /v1/baremetalinstances/{id}` (Get) endpoints return the correct `status.bootMacAddress` and `status.primaryIpAddress` fields in the response payload.
 - [ ] **CLI Output Formatting:** The OSAC CLI command `osac baremetalinstance describe <name>` displays the host's boot MAC and primary IP in a dedicated network metadata table structure.
-- [ ] **Negative Scenarios and Fail-Safe Behavior:** If the backend inventory lacks IP address metadata for an assigned host, the `BareMetalInstance` status successfully exposes the boot MAC address, while the primary IP address field remains empty without causing provisioning errors. In the OSAC CLI, the missing primary IP address must be explicitly displayed as `N/A` within the network metadata table structure.
+- [ ] **Negative Scenarios and Fail-Safe Behavior:** If the backend inventory lacks IP address metadata for an assigned host, the `BareMetalInstance` status successfully exposes the boot MAC address, while the primary IP address field remains empty without causing provisioning errors. In this scenario, the OSAC CLI command `osac baremetalinstance describe <name>` displays `N/A` in the primary IP address field rather than omitting the field, displaying empty columns, or failing.
 - [ ] **Agent Correlation Workflow:** A CaaS cluster installation can automatically correlate an Assisted Installer agent with the correct BareMetalInstance using the exposed boot MAC address.
 
 ## Assumptions
