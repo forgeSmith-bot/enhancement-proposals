@@ -20,14 +20,14 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 - **IP Address Exposure:** Surfacing the physical host's primary IP address (when available in the inventory backend) in the BareMetalInstance status.
 - **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that internal services can programmatically consume them.
 - **CLI Support:** Displaying the propagated MAC address and IP address in the OSAC CLI when listing or describing a BareMetalInstance.
-- **E2E Integration Testing:** Validating automatic metadata propagation and CaaS agent correlation workflows via automated E2E test suites with simulated inventory scenarios.
+- **Integration Validation:** Verification of automatic metadata propagation and CaaS agent correlation workflows across the platform.
 - **Technical Documentation:** Updating user and API guides to document the new BareMetalInstance status fields, API behaviors, and CLI output details.
 - **Tenant Isolation and Security:** Strict namespace boundaries ensuring that a Tenant User can only view or list metadata (boot MAC address and primary IP) for BareMetalInstances belonging to their own tenant.
 
 ## Out of Scope
 
 - **Full Hardware Specifications Exposure:** Exposing comprehensive hardware specifications such as CPU cores, RAM size, disk layout, or GPU details in the status field (this is managed via BareMetalInstanceType specs) [Jira: OSAC-2308].
-- **Inventory Backend Modifications:** Modifying or extending the schemas, APIs, or database of the existing inventory backend (the system must consume existing inventory data as-is) [Jira: OSAC-2308].
+- **Inventory Backend Modifications:** Modifying or extending the schemas, APIs, or database of the existing inventory backend is out of scope; the feature consumes existing inventory data as-is [Jira: OSAC-2308].
 - **DHCP Configuration and IP AMON:** Provisioning or configuring DHCP reservations or managing active network IP assignments (the metadata is read-only).
 - **Assisted Installer Agent Lifecycle:** Managing, deploying, or troubleshooting the Assisted Installer agents running on the bare metal hosts.
 - **Automatic DNS Registration:** Registering DNS A/AAAA or PTR records for the propagated host IP addresses in any external or internal DNS provider.
@@ -68,6 +68,7 @@ Not affected by this feature.
 - [ ] **API Payload Integrity:** The `GET /v1/baremetalinstances` (List) and `GET /v1/baremetalinstances/{id}` (Get) endpoints return the correct `status.bootMacAddress` and `status.primaryIpAddress` fields in the response payload.
 - [ ] **CLI Output Formatting:** The OSAC CLI command `osac baremetalinstance describe <name>` displays the host's boot MAC and primary IP in a dedicated network metadata table structure.
 - [ ] **Negative Scenarios and Fail-Safe Behavior:** If the backend inventory lacks IP address metadata for an assigned host, the `BareMetalInstance` status successfully exposes the boot MAC address, while the primary IP address field remains empty without causing provisioning errors.
+- [ ] **Agent Correlation Workflow:** A CaaS cluster installation can automatically correlate an Assisted Installer agent with the correct BareMetalInstance using the exposed boot MAC address.
 
 ## Assumptions
 
@@ -76,5 +77,5 @@ Not affected by this feature.
 
 ## Dependencies
 
-- **Bare Metal Inventory Service API:** The inventory service must expose the physical host's boot MAC address and IP address via its existing query APIs to enable automatic retrieval and propagation of metadata.
-- **CaaS / Assisted Installer Integration:** The CaaS layer must be able to query BareMetalInstance status to read the MAC address for agent correlation.
+- **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and primary IP address metadata to enable propagation to the instance status.
+- **CaaS / Assisted Installer Integration:** The cluster installer must be capable of consuming the exposed status metadata of the `BareMetalInstance` to correlate registered installer agents.
