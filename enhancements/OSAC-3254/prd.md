@@ -20,7 +20,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 - **IP Address Exposure:** Surfacing the physical host's primary IP address (when available in the inventory backend) in the BareMetalInstance status.
 - **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that internal services can programmatically consume them.
 - **CLI Support:** Displaying the propagated MAC address and IP address in the OSAC CLI when listing or describing a BareMetalInstance.
-- **Integration Validation:** Verification of automatic metadata propagation and CaaS agent correlation workflows across the platform.
+- **Seamless Platform Integration:** End-to-end integration ensuring that CaaS can successfully consume the propagated metadata to correlate agents without manual administrator action.
 - **Technical Documentation:** Updating user and API guides to document the new BareMetalInstance status fields, API behaviors, and CLI output details.
 - **Tenant Isolation and Security:** Strict namespace boundaries ensuring that a Tenant User can only view or list metadata (boot MAC address and primary IP) for BareMetalInstances belonging to their own tenant.
 
@@ -63,7 +63,7 @@ Not affected by this feature.
 
 ## Acceptance Criteria
 
-- [ ] **Metadata Propagation Latency:** The boot MAC address and primary IP address are populated in the `BareMetalInstance` status within 5 seconds of the instance reaching the `Ready` state. *Rationale: CaaS polls the BareMetalInstance API every 10 seconds during cluster installation; a 5-second propagation threshold ensures metadata is available on the first poll, preventing unnecessary retry delays.*
+- [ ] **Metadata Propagation Latency:** The boot MAC address and primary IP address are populated in the `BareMetalInstance` status within 5 seconds of the instance reaching the `Ready` state. *Rationale: A 5-second propagation threshold ensures network metadata is available immediately upon provisioning, preventing unnecessary delays in downstream automation services.*
 - [ ] **Tenant Isolation Boundaries:** A Tenant User can only retrieve the MAC and IP metadata for `BareMetalInstances` within their authorized tenant namespace; requests to retrieve instances in other namespaces are blocked.
 - [ ] **API Payload Integrity:** The `GET /v1/baremetalinstances` (List) and `GET /v1/baremetalinstances/{id}` (Get) endpoints return the correct `status.bootMacAddress` and `status.primaryIpAddress` fields in the response payload.
 - [ ] **CLI Output Formatting:** The OSAC CLI command `osac baremetalinstance describe <name>` displays the host's boot MAC and primary IP in a dedicated network metadata table structure.
