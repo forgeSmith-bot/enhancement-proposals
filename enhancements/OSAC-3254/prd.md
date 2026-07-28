@@ -15,7 +15,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 ## In Scope
 
-- **Network Metadata Exposure:** Surfacing the physical host's boot MAC address and primary IP address (when available in the inventory backend) in the BareMetalInstance status once the instance is provisioned.
+- **Network Metadata Exposure:** Surfacing the physical host's boot MAC address and primary IP address (when available in the inventory backend) in the BareMetalInstance status once the instance is provisioned. The primary IP address is expected to be reachable on the tenant's VirtualNetwork (rather than only an infrastructure-level network) to support direct client/SSH connectivity by Tenant Users.
 - **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that downstream services and automation can programmatically consume them.
 - **CLI Support:** Displaying the propagated MAC address and IP address in the OSAC CLI when listing or describing a BareMetalInstance.
 - **Seamless Platform Integration:** CaaS can automatically correlate Assisted Installer agents with provisioned BareMetalInstances using the exposed boot MAC address, eliminating manual host pairing.
@@ -41,7 +41,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
   - Visualization of MAC and IP metadata in the OSAC Web Console (deferred to subsequent UI epic).
   - Advanced Multi-NIC mapping and full interface status schemas (deferred to future milestone).
 - **Upgrades and Backward Compatibility:**
-  - Since this feature introduces new optional status fields (`status.bootMacAddress` and `status.primaryIpAddress`) without modifying existing mandatory schemas or spec structures, it is fully backward-compatible. Existing BareMetalInstances will simply have these fields populated upon their next status refresh or reconcile cycle, with no impact or disruption to existing workloads or APIs.
+  - Since this feature introduces new optional status fields (`status.bootMacAddress` and `status.primaryIpAddress`) without modifying existing mandatory schemas or spec structures, it is fully backward-compatible. Existing BareMetalInstances will simply have these fields populated upon their next status update, with no impact or disruption to existing workloads or APIs.
 - **E2E Testing Expectations:**
   - *Automated E2E Tests:* The metadata propagation workflow from provisioning completion to API/CLI verification, tenant isolation boundaries, and the negative scenarios (empty IP address/N/A CLI output) must be verified through automated end-to-end integration test suites.
   - *Manual Verification / Integration Testing:* The end-to-end integration flow of CaaS agent correlation using the boot MAC address will be verified through integrated staging environment runs prior to milestone completion.
@@ -66,7 +66,7 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 
 ## Acceptance Criteria
 
-- [ ] **Metadata Availability:** The boot MAC address and primary IP address are populated and available when the `BareMetalInstance` status shows `Ready`. *Rationale: Guaranteeing that network metadata is available when the instance is marked Ready ensures downstream automation services can immediately consume it, while the 5-second propagation target is maintained as an internal SLO.*
+- [ ] **Metadata Availability:** The boot MAC address and primary IP address are populated and available when the `BareMetalInstance` status shows `Ready`. *Rationale: Guaranteeing that network metadata is available when the instance is marked Ready ensures downstream automation services can immediately consume it.*
 - [ ] **Tenant Isolation Boundaries:** A Tenant User can only retrieve the MAC and IP metadata for `BareMetalInstances` within their authorized tenant namespace; requests to retrieve instances in other namespaces are blocked.
 - [ ] **API Payload Integrity:** The `GET /v1/baremetalinstances` (List) and `GET /v1/baremetalinstances/{id}` (Get) endpoints return the correct `status.bootMacAddress` and `status.primaryIpAddress` fields in the response payload.
 - [ ] **CLI Output Formatting:** The OSAC CLI command `osac baremetalinstance describe <name>` displays the host's boot MAC and primary IP in a dedicated network metadata table structure.
@@ -75,13 +75,14 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 
 ## Assumptions
 
-- **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts. [Assumption]
-- **Network Connectivity:** The host's primary IP address surfaced in the inventory is reachable over the tenant's VirtualNetwork or configured routing pathways once the instance is powered on. [Assumption]
-- **Existing Synchronization Capability:** The OSAC platform already possesses an existing capability for administrators to trigger a status refresh of a BareMetalInstance, which will be leveraged to update stale metadata without introducing new user-facing actions or APIs. [Assumption] *Validation Note: Prior to implementation, the existence and documentation of this capability must be explicitly validated; if it is found to be missing or insufficient, a dedicated refresh API or synchronization mechanism must be added to the project dependencies.*
+- **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts.
+- **Network Connectivity:** The host's primary IP address surfaced in the inventory is reachable over the tenant's VirtualNetwork or configured routing pathways once the instance is powered on, rather than only on an infrastructure-level network.
+- **Existing Synchronization Capability:** The OSAC platform already possesses an existing capability for administrators to trigger a status refresh of a BareMetalInstance, which will be leveraged to update stale metadata without introducing new user-facing actions or APIs.
 
 ## Dependencies
 
 - **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and primary IP address metadata to enable propagation to the instance status.
+- **Bare Metal Instance Status Refresh Capability:** Verification of the OSAC platform's existing capability to trigger a status refresh of a BareMetalInstance. If this capability is found to be missing or insufficient, a dedicated refresh API or synchronization mechanism must be added as a project dependency.
 - **CaaS / Assisted Installer Integration:** The cluster installer must be capable of consuming the exposed status metadata of the `BareMetalInstance` to correlate registered installer agents.
 
 ## Risks
