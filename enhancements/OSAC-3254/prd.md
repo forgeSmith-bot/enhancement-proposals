@@ -15,9 +15,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 ## In Scope
 
-- **Network metadata availability:** The BareMetalInstance status includes the boot MAC address and primary IP address once the instance is provisioned.
-- **Status Field Exposure:** Surfacing the physical host's boot MAC address in the BareMetalInstance status.
-- **IP Address Exposure:** Surfacing the physical host's primary IP address (when available in the inventory backend) in the BareMetalInstance status.
+- **Network Metadata Exposure:** Exposing the physical host's boot MAC address and primary IP address (when available in the inventory backend) in the BareMetalInstance status once the instance is provisioned.
 - **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that downstream services and automation can programmatically consume them.
 - **CLI Support:** Displaying the propagated MAC address and IP address in the OSAC CLI when listing or describing a BareMetalInstance.
 - **Seamless Platform Integration:** CaaS can automatically correlate Assisted Installer agents with provisioned BareMetalInstances using the exposed boot MAC address, eliminating manual host pairing.
@@ -54,7 +52,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 ### Cloud Infrastructure Admin
 
-- As a Cloud Infrastructure Admin, I want to verify that CaaS has automatically correlated Assisted Installer agents with the correct BareMetalInstances, so that cluster deployments proceed without manual host pairing or administrator intervention.
+- As a Cloud Infrastructure Admin, I want to easily monitor the fleet provisioning status and quickly identify any unmapped or mismatched installer agents during cluster deployment, so that I can troubleshoot failed correlations and ensure cluster installations proceed without manual pairing bottlenecks.
 
 ### Tenant Admin
 
@@ -66,7 +64,7 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 
 ## Acceptance Criteria
 
-- [ ] **Metadata Propagation Latency:** The boot MAC address and primary IP address are populated in the `BareMetalInstance` status within 5 seconds of the instance reaching the `Ready` state. *Rationale: A 5-second propagation threshold ensures network metadata is available immediately upon provisioning, preventing unnecessary delays in downstream automation services.*
+- [ ] **Metadata Availability on Ready:** The boot MAC address and primary IP address are populated and available in the `BareMetalInstance` status immediately when the instance reaches the `Ready` state. *Rationale: Ensuring network metadata is available as soon as the instance shows Ready prevents unnecessary polling or delays in downstream automation services and avoids race conditions in client integrations.*
 - [ ] **Tenant Isolation Boundaries:** A Tenant User can only retrieve the MAC and IP metadata for `BareMetalInstances` within their authorized tenant namespace; requests to retrieve instances in other namespaces are blocked.
 - [ ] **API Payload Integrity:** The `GET /v1/baremetalinstances` (List) and `GET /v1/baremetalinstances/{id}` (Get) endpoints return the correct `status.bootMacAddress` and `status.primaryIpAddress` fields in the response payload.
 - [ ] **CLI Output Formatting:** The OSAC CLI command `osac baremetalinstance describe <name>` displays the host's boot MAC and primary IP in a dedicated network metadata table structure.
