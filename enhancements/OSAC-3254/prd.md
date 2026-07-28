@@ -15,11 +15,11 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 ## In Scope
 
-- **Automatic Metadata Propagation:** The BareMetalInstance status automatically includes the physical host's boot MAC address and primary IP address once the instance is provisioned.
-- **Status Field Exposure:** Surfacing the physical host's boot MAC address in the BareMetalInstance status.
-- **IP Address Exposure:** Surfacing the physical host's primary IP address (when available in the inventory backend) in the BareMetalInstance status.
-- **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that internal services can programmatically consume them.
-- **CLI Support:** Displaying the propagated MAC address and IP address in the OSAC CLI when listing or describing a BareMetalInstance.
+- **Automatic Metadata Propagation:** The BareMetalInstance status automatically includes the physical host's boot MAC address and primary IP address once the instance is provisioned. The primary IP address is resolved as the runtime DHCP-discovered IP (queried dynamically via the dispatcher's `query_dhcp_lease` role from the fabric manager's DHCP lease API after provisioning), rather than any static, pre-allocated inventory-assigned IP. This aligns with the existing downstream networking contract and ensures that consumers (like CaaS / Assisted Installer) receive actual runtime network details.
+- **Status Field Exposure:** Surfacing the physical host's boot MAC address in the BareMetalInstance status immediately upon successful host allocation.
+- **IP Address Exposure:** Surfacing the physical host's primary IP address in the BareMetalInstance status. The authoritative source for this IP address is the runtime DHCP lease dynamically queried from the fabric manager's DHCP lease API once the host completes provisioning. It is propagated to the status within 5 seconds of the instance reaching the `READY` state (after the provisioned OS boots and successfully acquires its DHCP lease), preventing consumers from receiving conflicting or stale network identities.
+- **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that internal services can programmatically consume them. Both endpoints must enforce explicit authorization checks for viewing BareMetalInstance MAC/IP metadata. The List endpoint must strictly enforce tenant namespace isolation so that one tenant's network identities (MAC and IP addresses) are never returned to unauthorized callers or other tenants.
+- **CLI Support:** Displaying the propagated MAC address and IP address in the OSAC CLI when listing or describing a BareMetalInstance. The CLI list (wide table format) and describe outputs must respect the explicit authorization checks, ensuring that these sensitive fields are only visible to authorized callers, with tenant-level namespace isolation fully preserved.
 - **E2E Integration Testing:** Validating automatic metadata propagation and CaaS agent correlation workflows via automated E2E test suites with simulated inventory scenarios.
 - **Technical Documentation:** Updating user and API guides to document the new BareMetalInstance status fields, API behaviors, and CLI output details.
 
@@ -63,17 +63,20 @@ Not affected by this feature.
 
 - [ ] When a BareMetalInstance is successfully provisioned, its status contains the correct host boot MAC address and primary IP address.
 - [ ] The boot MAC address and primary IP address metadata appear in the BareMetalInstance status within 5 seconds of the instance reaching the `READY` state.
+- [ ] Get, List, and CLI list/describe operations require explicit authorization checks and expose the boot MAC address and primary IP address only to authorized callers.
+- [ ] The List API endpoint and CLI list output enforce strict tenant isolation, ensuring that one tenant's network identities (MAC and IP addresses) are never returned to another tenant.
 - [ ] A Tenant User can retrieve the boot MAC address and primary IP address of their own BareMetalInstances via the Get and List API endpoints.
 - [ ] A Tenant User cannot retrieve or view the status metadata of BareMetalInstances belonging to other tenants (strict tenant namespace isolation).
-- [ ] The OSAC CLI displays the boot MAC address and primary IP address in both list (wide table format) and describe outputs for BareMetalInstances.
+- [ ] The OSAC CLI displays the boot MAC address and primary IP address in both list (wide table format) and describe outputs for BareMetalInstances only to authorized callers.
 - [ ] Automated E2E test suites validate the agent correlation workflow by verifying that a simulated Assisted Installer agent can successfully pair with a BareMetalInstance using the exposed boot MAC address.
 
 ## Assumptions
 
-- **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts. [Assumption]
-- **Network Connectivity:** The host's primary IP address surfaced in the inventory is reachable over the tenant's VirtualNetwork or configured routing pathways once the instance is powered on. [Assumption]
+- **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address metadata for all available physical hosts. [Assumption]
+- **DHCP Leases API Reliability:** The fabric's DHCP service or DHCP lease API is operational and returns correct, timely leases matching the host's boot MAC address. [Assumption]
+- **Network Connectivity:** The host's runtime DHCP-discovered primary IP address is reachable over the tenant's VirtualNetwork or configured routing pathways once the instance is powered on. [Assumption]
 
 ## Dependencies
 
-- **Bare Metal Inventory Service API:** The inventory service must expose the physical host's boot MAC address and IP address via its existing query APIs so the fulfillment layer can retrieve them.
+- **Bare Metal Inventory Service API:** The inventory service must expose the physical host's boot MAC address via its existing query APIs so the fulfillment layer can retrieve them.
 - **CaaS / Assisted Installer Integration:** The CaaS layer must support querying the BareMetalInstance status API to read the MAC address for agent correlation.
