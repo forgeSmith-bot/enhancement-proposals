@@ -71,21 +71,23 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 ## Acceptance Criteria
 
 - [ ] **Metadata Availability:** The boot MAC address and primary IP address are populated and available in the status within 60 seconds of the `BareMetalInstance` entering the `Ready` state. *Rationale: Guaranteeing that network metadata is available in a timely manner when the instance is marked Ready ensures downstream automation services can immediately consume it.*
+  - *SLA Fallback Behavior:* If network metadata is not available within the 60-second window, downstream consumers (such as CaaS) will retry the query/correlation periodically using exponential backoff up to a predefined timeout, while the platform logs a warning event. Instance provisioning remains in the `Ready` state and is not failed or restarted.
 - [ ] **Tenant Isolation Boundaries:** A Tenant User can only retrieve the MAC and IP metadata for `BareMetalInstances` within their authorized tenant namespace; requests to retrieve instances in other namespaces are blocked.
 - [ ] **API Payload Integrity:** The `GET /api/fulfillment/v1/baremetal_instances` (List) and `GET /api/fulfillment/v1/baremetal_instances/{id}` (Get) endpoints return the boot MAC address and primary IP address in the status section of the response payload.
 - [ ] **CLI Output Formatting:** The OSAC CLI command `osac baremetalinstance describe <name>` displays the host's boot MAC and primary IP in a dedicated network metadata table structure.
 - [ ] **Negative Scenarios and Fail-Safe Behavior:** If the backend inventory lacks IP address metadata for an assigned host, the `BareMetalInstance` status successfully exposes the boot MAC address, while the primary IP address field remains empty without causing provisioning errors. In this scenario, the OSAC CLI command `osac baremetalinstance describe <name>` displays `N/A` in the primary IP address field rather than omitting the field, displaying empty columns, or failing.
 - [ ] **Agent Correlation Workflow:** A CaaS cluster installation automatically correlates an Assisted Installer agent with the correct BareMetalInstance using the exposed boot MAC address, and the cluster installation proceeds to completion without manual host pairing by an administrator.
 - [ ] **Metadata Synchronization:** The BareMetalInstance status metadata must automatically reflect current backend inventory data within 10 minutes of any change, without manual user or administrator intervention.
+  - *SLA Fallback Behavior:* If synchronization exceeds the 10-minute SLA, downstream systems must continue using the last-known cached metadata. The platform will raise a non-blocking diagnostic warning event for administrators to investigate potential backend inventory synchronization lag, ensuring active workloads and the instance status are not interrupted.
 
 ## Assumptions
 
 - **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts. [Assumption]
-- **Network Connectivity:** The host's primary IP address surfaced in the inventory is reachable over the tenant's VirtualNetwork (rather than only on an infrastructure-level network) once the instance is powered on, enabling self-service Tenant User SSH connections. [Assumption]
 - **Metadata Synchronization:** The platform supports automatic synchronization, ensuring any updates or changes in the backend host network inventory are automatically propagated and kept current in the BareMetalInstance status without manual user or administrator intervention. [Assumption]
 
 ## Dependencies
 
+- **VirtualNetwork IP Reachability (Prerequisite):** The primary IP address registered in the backend inventory must be reachable over the tenant's VirtualNetwork. This network reachability is a critical prerequisite for the Tenant User SSH connectivity workflow; if the IP is only reachable on an infrastructure-level network, self-service tenant access will fail, though the metadata propagation itself will still function. [Jira: OSAC-2308]
 - **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and primary IP address metadata to enable propagation to the instance status.
 - **CaaS / Assisted Installer Integration:** The cluster installer must be capable of consuming the exposed status metadata of the `BareMetalInstance` to correlate registered installer agents.
 - **BareMetalInstance Status Refresh:** The platform capability to automatically keep BareMetalInstance metadata synchronized with backend inventory updates. Detailed commitments, SLA metrics, and delivery obligations have been relocated to the owning epic or design document.
@@ -101,3 +103,6 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 - **Security Exposure of Host Network Metadata:**
   - *Risk:* Exposing physical host MAC and primary IP addresses could potentially allow unauthorized reconnaissance or targeted network scanning if accessed by malicious actors.
   - *Impact / Mitigation:* This is mitigated by enforcing strict tenant namespace isolation boundaries. Only authorized tenant users can view metadata for instances within their respective namespaces. Additionally, the metadata is read-only and does not grant configuration access to the underlying network infrastructure.
+- **Missed Metadata SLA / Propagation Delay:**
+  - *Risk:* Network metadata initial propagation (60 seconds) or synchronization (10 minutes) exceeds the targeted SLA due to backend inventory service delays or network latency.
+  - *Impact / Mitigation:* This could temporarily delay automated CaaS agent-to-instance correlation. Mitigated by designing downstream consumers (such as CaaS) to gracefully poll and retry correlation with an exponential backoff instead of failing immediately. Additionally, the BareMetalInstance provisioning state is decoupled from metadata retrieval, preventing transient inventory delays from marking otherwise healthy nodes as failed.
