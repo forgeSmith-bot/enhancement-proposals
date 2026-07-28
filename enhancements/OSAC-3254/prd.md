@@ -41,7 +41,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
   - Visualization of MAC and IP metadata in the OSAC Web Console (deferred to subsequent UI epic).
   - Advanced Multi-NIC mapping and full interface status schemas (deferred to future milestone).
 - **Upgrades and Backward Compatibility:**
-  - Since this feature introduces new optional status fields (`status.bootMacAddress` and `status.primaryIpAddress`) without modifying existing API response contracts, it is fully backward-compatible. Existing BareMetalInstances will simply have these fields populated upon their next status update, with no impact or disruption to existing workloads or APIs.
+  - Since this feature introduces new optional status fields (`status.bootMacAddress` and `status.primaryIpAddress`) without modifying existing API response contracts, it is fully backward-compatible. Existing BareMetalInstances will gain the new status fields without requiring re-provisioning or manual intervention.
 - **E2E Testing Expectations:**
   - *Automated E2E Tests:* The metadata propagation workflow from provisioning completion to API/CLI verification, tenant isolation boundaries, and the negative scenarios (empty IP address/N/A CLI output) must be verified through automated end-to-end integration test suites.
   - *Manual Verification / Integration Testing:* The end-to-end integration flow of CaaS agent correlation using the boot MAC address will be verified through integrated staging environment runs prior to milestone completion.
@@ -55,6 +55,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 ### Cloud Infrastructure Admin
 
 - As a Cloud Infrastructure Admin, I want to list all BareMetalInstances and their network metadata via the API or CLI, so that I can verify agent-to-instance mapping across the fleet and identify any unmapped hosts to troubleshoot cluster deployment failures.
+- As a Cloud Infrastructure Admin, I want the CLI and API to gracefully display `N/A` or empty fields when backend inventory network metadata is missing, so that I can easily identify incomplete inventory records and troubleshoot configuration issues without encountering system errors or failing the provisioning process.
 
 ### Tenant Admin
 
@@ -84,14 +85,14 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 - **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and primary IP address metadata to enable propagation to the instance status.
 - **CaaS / Assisted Installer Integration:** The cluster installer must be capable of consuming the exposed status metadata of the `BareMetalInstance` to correlate registered installer agents.
 - **BareMetalInstance Status Refresh Validation:** Prior to implementation, the platform's existing status refresh capability must be validated to ensure it can update stale metadata.
-  - *Validation Criteria:* An admin-triggered status sync must successfully query the backend inventory for the target host's current network metadata and update the corresponding `status.bootMacAddress` and `status.primaryIpAddress` fields within 5 seconds of the command invocation.
-  - *Fallback Plan and Timeline:* If the existing refresh capability is found to be missing or insufficient during the first week of development (by Day 5), the team will allocate a dedicated sprint task to implement a lightweight background sync loop in the BareMetalInstance controller that periodically reconciles metadata every 10 minutes, ensuring no blocker to the main milestone delivery.
+  - *Validation Criteria:* An admin-triggered refresh must update the BareMetalInstance status fields within 5 seconds of the request.
+  - *Fallback Plan and Timeline:* If the existing refresh capability is found to be missing or insufficient during the first week of development (by Day 5), the team must deliver an alternative that keeps BareMetalInstance metadata current without manual user intervention, ensuring no blocker to the main milestone delivery.
 
 ## Risks
 
 - **Stale or Incorrect Inventory Metadata:**
   - *Risk:* The physical host inventory backend contains stale or incorrect MAC or IP address metadata, causing CaaS to fail agent correlation or preventing Tenant Users from connecting.
-  - *Impact / Mitigation:* This is mitigated by ensuring that the status propagation occurs dynamically, and by displaying `N/A` or empty fields when the backend lacks reliable data rather than failing provisioning. Downstream services must handle metadata mismatches gracefully. Since OSAC administrators can leverage the existing platform capability to trigger a status refresh of the BareMetalInstance, they can resolve temporary discrepancies between the physical backend and the BareMetalInstance status without requiring any new UI/CLI APIs. (Note: If the platform's existing refresh capability is found to be missing or insufficient during initial validation, the team will implement the fallback sync loop background mechanism defined in the Dependencies section).
+  - *Impact / Mitigation:* This is mitigated by ensuring that the status propagation occurs dynamically, and by displaying `N/A` or empty fields when the backend lacks reliable data rather than failing provisioning. Downstream services must handle metadata mismatches gracefully. Since OSAC administrators can leverage the existing platform capability to trigger a status refresh of the BareMetalInstance, they can resolve temporary discrepancies between the physical backend and the BareMetalInstance status without requiring any new UI/CLI APIs. (Note: If the platform's existing refresh capability is found to be missing or insufficient during initial validation, the team must deliver an alternative that keeps BareMetalInstance metadata current without manual user intervention as defined in the Dependencies section).
 - **Metadata Drift Post-Propagation:**
   - *Risk:* If a physical host's primary IP address is reassigned or modified in the backend inventory after successful propagation, the BareMetalInstance status could become out-of-sync.
   - *Impact / Mitigation:* The propagated status represents a point-of-provisioning snapshot. Any backend inventory updates that occur after the BareMetalInstance has reached the `Ready` state will not automatically overwrite the status unless a manual re-synchronization or instance reboot is initiated by a Cloud Provider Admin.
