@@ -3,7 +3,7 @@
 | Field | Value |
 | :--- | :--- |
 | Author(s) | OSAC Product Team |
-| Jira | OSAC-2308 / OSAC-3254 |
+| Jira | OSAC-2308 (Parent Epic) / OSAC-3254 (Child Status Tracking Issue) |
 | Milestone | v0.2 |
 | Date | 2026-07-28 |
 
@@ -28,7 +28,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 - **Full Hardware Specifications Exposure:** Exposing comprehensive hardware specifications such as CPU cores, RAM size, disk layout, or GPU details in the status field (this is managed via BareMetalInstanceType specs) [Jira: OSAC-2308].
 - **Inventory Backend Modifications:** Modifying or extending the schemas, APIs, or database of the existing inventory backend is out of scope; the feature consumes existing inventory data as-is [Jira: OSAC-2308].
-- **DHCP Configuration and IP AMON:** Provisioning or configuring DHCP reservations or managing active network IP assignments (the metadata is read-only).
+- **DHCP Configuration and IPAM (IP Address Management):** Provisioning or configuring DHCP reservations or managing active network IP assignments (the metadata is read-only).
 - **Assisted Installer Agent Lifecycle:** Managing, deploying, or troubleshooting the Assisted Installer agents running on the bare metal hosts.
 - **Automatic DNS Registration:** Registering DNS A/AAAA or PTR records for the propagated host IP addresses in any external or internal DNS provider.
 - **UI Status Visualization:** Designing or implementing the frontend representation of these fields in the OSAC Web Console (deferred to a subsequent UI-specific epic).
