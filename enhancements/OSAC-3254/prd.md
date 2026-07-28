@@ -21,7 +21,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 - **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that internal services can programmatically consume them.
 - **CLI Support:** Displaying the propagated MAC address and IP address in the OSAC CLI when listing or describing a BareMetalInstance.
 - **Seamless Platform Integration:** End-to-end integration ensuring that CaaS can successfully consume the propagated metadata to correlate agents without manual administrator action.
-- **Technical Documentation:** Updating user and API guides to document the new BareMetalInstance status fields, API behaviors, and CLI output details.
+- **Technical Documentation:** Updating specific documentation sections, including the *OSAC BareMetalInstance API Reference*, the *OSAC Command Line Interface User Guide*, and the *Cluster as a Service (CaaS) Integration Guide*, to fully document the new status fields (`status.bootMacAddress` and `status.primaryIpAddress`), API response structures, CLI table layouts, and troubleshooting procedures.
 - **Tenant Isolation and Security:** Strict namespace boundaries ensuring that a Tenant User can only view or list metadata (boot MAC address and primary IP) for BareMetalInstances belonging to their own tenant.
 
 ## Out of Scope
@@ -55,7 +55,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 ### Tenant Admin
 
-Not affected by this feature.
+Not affected by this feature, as Tenant Admins manage tenant-level policies and access controls rather than individual instance-level network metadata.
 
 ### Tenant User
 
@@ -79,3 +79,12 @@ Not affected by this feature.
 
 - **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and primary IP address metadata to enable propagation to the instance status.
 - **CaaS / Assisted Installer Integration:** The cluster installer must be capable of consuming the exposed status metadata of the `BareMetalInstance` to correlate registered installer agents.
+
+## Risks
+
+- **Stale or Incorrect Inventory Metadata:**
+  - *Risk:* The physical host inventory backend contains stale or incorrect MAC or IP address metadata, causing CaaS to fail agent correlation or preventing Tenant Users from connecting.
+  - *Impact / Mitigation:* This is mitigated by ensuring that the status propagation occurs dynamically, and by displaying `N/A` or empty fields when the backend lacks reliable data rather than failing provisioning. Downstream services must handle metadata mismatches gracefully, and administrators can trigger a re-sync of the host status if they detect a discrepancy between the physical backend and the BareMetalInstance status.
+- **Metadata Drift Post-Propagation:**
+  - *Risk:* If a physical host's primary IP address is reassigned or modified in the backend inventory after successful propagation, the BareMetalInstance status could become out-of-sync.
+  - *Impact / Mitigation:* The propagated status represents a point-of-provisioning snapshot. Any backend inventory updates that occur after the BareMetalInstance has reached the `Ready` state will not automatically overwrite the status unless a manual re-synchronization or instance reboot is initiated by a Cloud Provider Admin.
