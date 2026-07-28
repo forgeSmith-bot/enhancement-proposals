@@ -7,6 +7,13 @@
 | Milestone | v0.2 |
 | Date | 2026-07-28 |
 
+## Terminology
+
+- **BMaaS (Bare Metal as a Service):** An OSAC core service responsible for provisioning and managing the lifecycle of physical bare metal host instances.
+- **CaaS (Cluster as a Service):** An OSAC core service that provisions and manages Kubernetes clusters using Hosted Control Planes (HCP).
+- **Backend Inventory:** The system of record containing physical host hardware specifications, network interfaces, assigned MAC addresses, and IP address mappings.
+- **Assisted Installer:** An installer agent that registers from a newly booted physical host during cluster deployment to facilitate automated Kubernetes installation.
+
 ## Problem Statement
 
 When a BareMetalInstance is provisioned, the Bare Metal as a Service (BMaaS) fulfillment service assigns a physical host from the backend inventory. However, none of the host's identifying information (such as the boot MAC address or primary IP address) is surfaced back to the BareMetalInstance status.
@@ -85,13 +92,13 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 ## Assumptions
 
 - **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts. [Assumption]
-- **Platform Sync Infrastructure Prerequisite:** It is assumed that the platform's core synchronization infrastructure is available to trigger updates. The delivery of this feature relies on this existing infrastructure to propagate backend inventory changes, while the specific mapping, status updates, 10-minute SLA verification, and observability timestamp are in-scope deliverables of this issue. [Assumption]
 
 ## Dependencies
 
 - **VirtualNetwork IP Reachability (Prerequisite):** The primary IP address registered in the backend inventory must be reachable over the tenant's VirtualNetwork. This network reachability is a critical prerequisite for the Tenant User SSH connectivity workflow; if the IP is only reachable on an infrastructure-level network, self-service tenant access will fail, though the metadata propagation itself will still function. [Jira: OSAC-2308]
 - **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and primary IP address metadata to enable propagation to the instance status.
 - **CaaS / Assisted Installer Integration:** The cluster installer must be capable of consuming the exposed status metadata of the `BareMetalInstance` to correlate registered installer agents.
+- **Platform Core Synchronization Infrastructure:** The core platform synchronization framework is a hard dependency required to trigger updates, propagate backend inventory changes, and satisfy the 10-minute sync SLA and observability timestamp requirements. Any required enhancements to this core infrastructure are tracked as a prerequisite dependency under [Jira: OSAC-2308].
 - **BareMetalInstance Status Refresh:** The platform capability to automatically keep BareMetalInstance metadata synchronized with backend inventory updates. Detailed commitments, SLA metrics, and delivery obligations have been relocated to the owning epic or design document.
 
 ## Risks
