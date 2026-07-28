@@ -43,7 +43,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
   - Visualization of MAC and IP metadata in the OSAC Web Console (deferred to subsequent UI epic).
   - Advanced Multi-NIC mapping and full interface status schemas (deferred to future milestone).
 - **E2E Testing Expectations:**
-  - *Automated E2E Tests:* The metadata propagation workflow from provisioning completion to API/CLI verification, tenant isolation boundaries, and negative scenarios (empty IP address/N/A CLI output) must be covered by automated end-to-end integration test suites verifying the API and CLI behaviors under diverse conditions.
+  - *Automated E2E Tests:* The metadata propagation workflow from provisioning completion to API/CLI verification, tenant isolation boundaries, and the negative scenarios (empty IP address/N/A CLI output) must be verified through automated end-to-end integration test suites.
   - *Manual Verification / Integration Testing:* The end-to-end integration flow of CaaS agent correlation using the boot MAC address will be verified through integrated staging environment runs prior to milestone completion.
 
 ## User Stories
@@ -92,6 +92,6 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 - **Metadata Drift Post-Propagation:**
   - *Risk:* If a physical host's primary IP address is reassigned or modified in the backend inventory after successful propagation, the BareMetalInstance status could become out-of-sync.
   - *Impact / Mitigation:* The propagated status represents a point-of-provisioning snapshot. Any backend inventory updates that occur after the BareMetalInstance has reached the `Ready` state will not automatically overwrite the status unless a manual re-synchronization or instance reboot is initiated by a Cloud Provider Admin.
-- **Security Implications of Metadata Exposure:**
-  - *Risk:* Unauthorized access or exposure of sensitive physical host network metadata (MAC and IP addresses) to malicious actors or unauthorized tenants could facilitate targeted network scanning, spoofing, or infrastructure reconnaissance.
-  - *Impact / Mitigation:* This is mitigated by enforcing strict namespace-based tenant isolation. Metadata is only accessible to users who are authorized to view the corresponding `BareMetalInstance` resource within their own tenant space. Additionally, these status fields are read-only, preventing any unauthorized remote network or configuration modification.
+- **Security Exposure of Host Network Metadata:**
+  - *Risk:* Exposing physical host MAC and primary IP addresses could potentially allow unauthorized reconnaissance or targeted network scanning if accessed by malicious actors.
+  - *Impact / Mitigation:* This is mitigated by enforcing strict tenant namespace isolation boundaries. Only authorized tenant users can view metadata for instances within their respective namespaces. Additionally, the metadata is read-only and does not grant configuration access to the underlying network infrastructure.
