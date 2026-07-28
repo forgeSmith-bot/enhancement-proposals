@@ -27,12 +27,12 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 ## Out of Scope
 
 - **Full Hardware Specifications Exposure:** Exposing comprehensive hardware specifications such as CPU cores, RAM size, disk layout, or GPU details in the status field (this is managed via BareMetalInstanceType specs) [Jira: OSAC-2308].
-- **Inventory Backend Modifications:** Modifying or extending the schemas, APIs, or database of the existing inventory backend (the operator must consume existing inventory data as-is) [Jira: OSAC-2308].
+- **Inventory Backend Modifications:** Modifying or extending the schemas, APIs, or database of the existing inventory backend (the system must consume existing inventory data as-is) [Jira: OSAC-2308].
 - **DHCP Configuration and IP AMON:** Provisioning or configuring DHCP reservations or managing active network IP assignments (the metadata is read-only).
 - **Assisted Installer Agent Lifecycle:** Managing, deploying, or troubleshooting the Assisted Installer agents running on the bare metal hosts.
 - **Automatic DNS Registration:** Registering DNS A/AAAA or PTR records for the propagated host IP addresses in any external or internal DNS provider.
 - **UI Status Visualization:** Designing or implementing the frontend representation of these fields in the OSAC Web Console (deferred to a subsequent UI-specific epic).
-- **Network Interface Reconfiguration:** Allowing tenant users or operators to modify the physical host's MAC address or assigned inventory IP address via the BareMetalInstance spec.
+- **Network Interface Reconfiguration:** Allowing tenant users or administrators to modify the physical host's MAC address or assigned inventory IP address via the BareMetalInstance spec.
 - **Advanced Multi-NIC Mapping:** Surfacing full network interface maps (all secondary and tertiary interfaces) in the status; only the primary boot MAC and primary IP address are in scope.
 
 ## Milestone Scoping
@@ -77,4 +77,4 @@ Not affected by this feature.
 ## Dependencies
 
 - **Bare Metal Inventory Service API:** The inventory service must expose the physical host's boot MAC address and IP address via its existing query APIs to enable automatic retrieval and propagation of metadata.
-- **CaaS / Assisted Installer Integration:** The CaaS layer must support querying the BareMetalInstance status API to read the MAC address for agent correlation.
+- **CaaS / Assisted Installer Integration:** The CaaS layer must be able to query BareMetalInstance status to read the MAC address for agent correlation.
