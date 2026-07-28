@@ -20,7 +20,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 - **IP Address Exposure:** Surfacing the physical host's primary IP address (when available in the inventory backend) in the BareMetalInstance status.
 - **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that internal services can programmatically consume them.
 - **CLI Support:** Displaying the propagated MAC address and IP address in the OSAC CLI when listing or describing a BareMetalInstance.
-- **Seamless Platform Integration:** End-to-end integration ensuring that CaaS can successfully consume the propagated metadata to correlate agents without manual administrator action.
+- **Seamless Platform Integration:** CaaS can automatically correlate Assisted Installer agents with provisioned BareMetalInstances using the exposed boot MAC address, eliminating manual host pairing.
 - **Technical Documentation:** Updating specific documentation sections, including the *OSAC BareMetalInstance API Reference*, the *OSAC Command Line Interface User Guide*, and the *Cluster as a Service (CaaS) Integration Guide*, to fully document the new status fields (`status.bootMacAddress` and `status.primaryIpAddress`), API response structures, CLI table layouts, and troubleshooting procedures.
 - **Tenant Isolation and Security:** Strict namespace boundaries ensuring that a Tenant User can only view or list metadata (boot MAC address and primary IP) for BareMetalInstances belonging to their own tenant.
 
@@ -42,6 +42,9 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
   - Automated DNS registration for BareMetalInstance IPs (deferred to subsequent milestone).
   - Visualization of MAC and IP metadata in the OSAC Web Console (deferred to subsequent UI epic).
   - Advanced Multi-NIC mapping and full interface status schemas (deferred to future milestone).
+- **E2E Testing Expectations:**
+  - *Automated E2E Tests:* The metadata propagation workflow from provisioning completion to API/CLI verification, tenant isolation boundaries, and the negative scenarios (empty IP address/N/A CLI output) must be covered by automated E2E test playbooks in `osac-test-infra`.
+  - *Manual Verification / Integration Testing:* The end-to-end integration flow of CaaS agent correlation using the boot MAC address will be verified through integrated staging environment runs prior to milestone completion.
 
 ## User Stories
 
@@ -74,6 +77,7 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 
 - **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts. [Assumption]
 - **Network Connectivity:** The host's primary IP address surfaced in the inventory is reachable over the tenant's VirtualNetwork or configured routing pathways once the instance is powered on. [Assumption]
+- **Existing Synchronization Capability:** The OSAC platform already possesses an existing capability for administrators to trigger a synchronization or status refresh of a BareMetalInstance (e.g., via a standard reconcile sync or update trigger), which will be leveraged to update stale metadata without introducing new user-facing actions or APIs. [Assumption]
 
 ## Dependencies
 
@@ -84,7 +88,7 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 
 - **Stale or Incorrect Inventory Metadata:**
   - *Risk:* The physical host inventory backend contains stale or incorrect MAC or IP address metadata, causing CaaS to fail agent correlation or preventing Tenant Users from connecting.
-  - *Impact / Mitigation:* This is mitigated by ensuring that the status propagation occurs dynamically, and by displaying `N/A` or empty fields when the backend lacks reliable data rather than failing provisioning. Downstream services must handle metadata mismatches gracefully, and administrators can trigger a re-sync of the host status if they detect a discrepancy between the physical backend and the BareMetalInstance status.
+  - *Impact / Mitigation:* This is mitigated by ensuring that the status propagation occurs dynamically, and by displaying `N/A` or empty fields when the backend lacks reliable data rather than failing provisioning. Downstream services must handle metadata mismatches gracefully. Since OSAC administrators can leverage the existing platform capability to trigger a re-sync of the host status, they can resolve temporary discrepancies between the physical backend and the BareMetalInstance status without requiring any new UI/CLI APIs.
 - **Metadata Drift Post-Propagation:**
   - *Risk:* If a physical host's primary IP address is reassigned or modified in the backend inventory after successful propagation, the BareMetalInstance status could become out-of-sync.
   - *Impact / Mitigation:* The propagated status represents a point-of-provisioning snapshot. Any backend inventory updates that occur after the BareMetalInstance has reached the `Ready` state will not automatically overwrite the status unless a manual re-synchronization or instance reboot is initiated by a Cloud Provider Admin.
