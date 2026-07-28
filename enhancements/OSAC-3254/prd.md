@@ -3,20 +3,19 @@
 | Field | Value |
 | :--- | :--- |
 | Author(s) | OSAC Product Team |
-| Service | BMaaS |
 | Jira | OSAC-2308 (Parent Epic) / OSAC-3254 (Child Status Tracking Issue) |
 | Milestone | v0.2 |
 | Date | 2026-07-28 |
 
 ## Problem Statement
 
-When a BareMetalInstance is provisioned via the BMaaS (Bare Metal as a Service) fulfillment capability, the service assigns a physical host from the backend inventory. However, none of the host's identifying information (such as the boot MAC address or primary IP address) is surfaced back to the BareMetalInstance status.
+When a BareMetalInstance is provisioned, the Bare Metal as a Service (BMaaS) fulfillment service assigns a physical host from the backend inventory. However, none of the host's identifying information (such as the boot MAC address or primary IP address) is surfaced back to the BareMetalInstance status.
 
 This creates a critical disconnect for consumers like Cluster as a Service (CaaS). During cluster installation, the Assisted Installer agent registers from the newly booted physical host using its MAC address, but CaaS has no way of programmatically correlating this agent with the provisioned BareMetalInstance. As a result, CaaS cannot automatically map agents to instances, forcing manual intervention by administrators to correlate hosts, which significantly delays cluster deployment and increases operational overhead. Additionally, Tenant Users cannot self-service connect to their provisioned instances because their network identities (IP and MAC) are completely hidden, leading to additional support requests and a suboptimal user experience.
 
 ## In Scope
 
-- **Network Metadata Exposure:** Surfacing the physical host's boot MAC address and primary IP address (when available in the inventory backend) in the BareMetalInstance status once the instance is provisioned. The primary IP address is expected to be reachable on the tenant's VirtualNetwork, rather than only on an infrastructure-level network, enabling self-service Tenant User SSH connections.
+- **Network Metadata Exposure:** Surfacing the physical host's boot MAC address and primary IP address (when available in the BMaaS inventory backend) in the BareMetalInstance status once the instance is provisioned. The primary IP address is expected to be reachable on the tenant's VirtualNetwork, rather than only on an infrastructure-level network, enabling self-service Tenant User SSH connections.
 - **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that downstream services and automation can programmatically consume them.
 - **CLI Support:** Displaying the propagated MAC address and IP address in the OSAC CLI when listing or describing a BareMetalInstance.
 - **Seamless Platform Integration:** CaaS can automatically correlate Assisted Installer agents with provisioned BareMetalInstances using the exposed boot MAC address, eliminating manual host pairing.
@@ -53,7 +52,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 ### Cloud Provider Admin
 
 - As a Cloud Provider Admin, I want host inventory metadata (such as the boot MAC address and primary IP address) to be propagated automatically from the backend inventory to the BareMetalInstance status, so that I do not need to perform manual lookups or maintain offline host spreadsheets.
-- As a Cloud Provider Admin, I want fleet-wide visibility of metadata completeness across all tenant namespaces, so that I can easily identify which BareMetalInstances are missing network metadata and proactively address inventory database gaps before they impact tenant workloads.
+- As a Cloud Provider Admin, I want to see which BareMetalInstances are missing network metadata across all tenants, so that I have fleet-wide visibility into metadata completeness and can proactively resolve backend inventory issues.
 
 ### Cloud Infrastructure Admin
 
@@ -83,26 +82,22 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 
 - **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts. [Assumption]
 - **Network Connectivity:** The host's primary IP address surfaced in the inventory is reachable over the tenant's VirtualNetwork (rather than only on an infrastructure-level network) once the instance is powered on, enabling self-service Tenant User SSH connections. [Assumption]
-- **Existing Synchronization Capability:** The OSAC platform possesses an existing capability that automatically keeps BareMetalInstance status updated with the backend inventory. This capability will be validated early in the cycle, and if it is found to be insufficient, the metadata must remain current automatically, ensuring updates are reflected without requiring manual user or administrator intervention. [Assumption]
+- **Existing Synchronization Capability:** The OSAC platform possesses an existing capability that automatically keeps BareMetalInstance status updated with backend inventory changes. This capability will be validated early in the cycle, and if it is found to be insufficient, the system must automatically ensure metadata remains current without requiring manual user or administrator intervention. [Assumption]
 
 ## Dependencies
 
 - **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and primary IP address metadata to enable propagation to the instance status.
 - **CaaS / Assisted Installer Integration:** The cluster installer must be capable of consuming the exposed status metadata of the `BareMetalInstance` to correlate registered installer agents.
 - **BareMetalInstance Status Refresh Validation:** Validate that the existing platform capability can keep BareMetalInstance metadata current. Detailed commitments, SLA metrics, fallback timelines, and delivery obligations have been relocated to the owning epic or design document.
-- **Tenant VirtualNetwork Connectivity:** The BMaaS physical hosts must have proper L2/L3 routing and network configuration such that the primary IP address assigned from the inventory backend is reachable over the tenant's VirtualNetwork, which is a hard dependency for Tenant Users to self-service SSH into their provisioned instances.
 
 ## Risks
 
 - **Stale or Incorrect Inventory Metadata:**
   - *Risk:* The physical host inventory backend contains stale or incorrect MAC or IP address metadata, causing CaaS to fail agent correlation or preventing Tenant Users from connecting.
-  - *Impact / Mitigation:* This is mitigated by ensuring that the status propagation occurs dynamically, and by displaying `N/A` or empty fields when the backend lacks reliable data rather than failing provisioning. Downstream services must handle metadata mismatches gracefully. Since BareMetalInstance status metadata is designed to remain current automatically, any corrected or updated metadata in the backend will automatically propagate to the status without requiring manual user or administrator intervention.
+  - *Impact / Mitigation:* This is mitigated by ensuring that the status propagation occurs dynamically, and by displaying `N/A` or empty fields when the backend lacks reliable data rather than failing provisioning. Downstream services must handle metadata mismatches gracefully. Since BareMetalInstance status metadata remains current automatically, any corrected or updated metadata in the backend will automatically propagate to the status without requiring manual user or administrator intervention.
 - **Metadata Drift Post-Propagation:**
   - *Risk:* If a physical host's primary IP address is reassigned or modified in the backend inventory after successful propagation, the BareMetalInstance status could become out-of-sync.
-  - *Impact / Mitigation:* This is mitigated by ensuring the BareMetalInstance status network metadata remains current automatically. The platform automatically detects changes to host network metadata in the backend inventory and updates the BareMetalInstance status accordingly. No manual user or admin intervention, such as manual re-synchronization, reboot, or reprovisioning, is required to keep the metadata current.
+  - *Impact / Mitigation:* This is mitigated by ensuring the BareMetalInstance status metadata is kept up-to-date automatically. The platform automatically updates the BareMetalInstance status when host network metadata changes in the backend inventory. No manual user or admin intervention, such as manual re-synchronization, reboot, or reprovisioning, is required to keep the metadata current.
 - **Security Exposure of Host Network Metadata:**
   - *Risk:* Exposing physical host MAC and primary IP addresses could potentially allow unauthorized reconnaissance or targeted network scanning if accessed by malicious actors.
   - *Impact / Mitigation:* This is mitigated by enforcing strict tenant namespace isolation boundaries. Only authorized tenant users can view metadata for instances within their respective namespaces. Additionally, the metadata is read-only and does not grant configuration access to the underlying network infrastructure.
-- **Unreachable Primary IP on Tenant VirtualNetwork:**
-  - *Risk:* The primary IP address of the provisioned physical host (surfaced from the inventory) is not reachable on the tenant's VirtualNetwork, preventing Tenant Users from connecting via SSH.
-  - *Impact / Mitigation:* This is mitigated by validating VirtualNetwork routing during provisioning and ensuring that BMaaS and the networking subsystem are correctly aligned. Clear error handling or status indications will be provided if connectivity validation fails, and the user documentation will explicitly detail the network topology requirements for VirtualNetwork integration.
