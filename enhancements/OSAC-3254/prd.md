@@ -19,7 +19,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 - **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that downstream services and automation can programmatically consume them.
 - **CLI Support:** Displaying the propagated MAC address and IP address in the OSAC CLI when listing or describing a BareMetalInstance.
 - **Seamless Platform Integration:** CaaS can automatically correlate Assisted Installer agents with provisioned BareMetalInstances using the exposed boot MAC address, eliminating manual host pairing.
-- **Technical Documentation:** Updating the user-facing API reference and CLI guides to cover the new status fields (`status.bootMacAddress` and `status.primaryIpAddress`).
+- **Technical Documentation:** Updating the user-facing API reference and CLI guides to cover the newly exposed boot MAC address and primary IP address fields in the BareMetalInstance status.
 - **Tenant Isolation and Security:** Strict namespace boundaries ensuring that a Tenant User can only view or list metadata (boot MAC address and primary IP) for BareMetalInstances belonging to their own tenant.
 
 ## Out of Scope
@@ -41,7 +41,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
   - Visualization of MAC and IP metadata in the OSAC Web Console (deferred to subsequent UI epic).
   - Advanced Multi-NIC mapping and full interface status schemas (deferred to future milestone).
 - **Upgrades and Backward Compatibility:**
-  - Since this feature introduces new optional status fields (`status.bootMacAddress` and `status.primaryIpAddress`) without modifying existing API response contracts, it is fully backward-compatible. Existing BareMetalInstances will gain the new status fields without requiring re-provisioning or manual intervention.
+  - Since this feature introduces new optional status fields for the boot MAC address and primary IP address without modifying existing API response contracts, it is fully backward-compatible. Existing BareMetalInstances will gain the new status fields without requiring re-provisioning or manual intervention.
 - **E2E Testing Expectations:**
   - *Automated E2E Tests:* The metadata propagation workflow from provisioning completion to API/CLI verification, tenant isolation boundaries, and the negative scenarios (empty IP address/N/A CLI output) must be verified through automated end-to-end integration test suites.
   - *Manual Verification / Integration Testing:* The end-to-end integration flow of CaaS agent correlation using the boot MAC address will be verified through integrated staging environment runs prior to milestone completion.
@@ -56,6 +56,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 - As a Cloud Infrastructure Admin, I want to list all BareMetalInstances and their network metadata via the API or CLI, so that I can verify agent-to-instance mapping across the fleet and identify any unmapped hosts to troubleshoot cluster deployment failures.
 - As a Cloud Infrastructure Admin, I want the CLI and API to gracefully display `N/A` or empty fields when backend inventory network metadata is missing, so that I can easily identify incomplete inventory records and troubleshoot configuration issues without encountering system errors or failing the provisioning process.
+- **Conditional / Fallback Story:** As a Cloud Infrastructure Admin, if the existing platform status refresh capability is found to be missing or insufficient, I want an automated synchronization mechanism to keep the BareMetalInstance network metadata updated without manual user intervention, ensuring metadata remains current.
 
 ### Tenant Admin
 
@@ -69,10 +70,11 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 
 - [ ] **Metadata Availability:** The boot MAC address and primary IP address are populated and available in the status within 60 seconds of the `BareMetalInstance` entering the `Ready` state. *Rationale: Guaranteeing that network metadata is available in a timely manner when the instance is marked Ready ensures downstream automation services can immediately consume it.*
 - [ ] **Tenant Isolation Boundaries:** A Tenant User can only retrieve the MAC and IP metadata for `BareMetalInstances` within their authorized tenant namespace; requests to retrieve instances in other namespaces are blocked.
-- [ ] **API Payload Integrity:** The `GET /v1/baremetalinstances` (List) and `GET /v1/baremetalinstances/{id}` (Get) endpoints return the correct `status.bootMacAddress` and `status.primaryIpAddress` fields in the response payload.
+- [ ] **API Payload Integrity:** The `GET /v1/baremetalinstances` (List) and `GET /v1/baremetalinstances/{id}` (Get) endpoints return the boot MAC address and primary IP address in the status section of the response payload.
 - [ ] **CLI Output Formatting:** The OSAC CLI command `osac baremetalinstance describe <name>` displays the host's boot MAC and primary IP in a dedicated network metadata table structure.
 - [ ] **Negative Scenarios and Fail-Safe Behavior:** If the backend inventory lacks IP address metadata for an assigned host, the `BareMetalInstance` status successfully exposes the boot MAC address, while the primary IP address field remains empty without causing provisioning errors. In this scenario, the OSAC CLI command `osac baremetalinstance describe <name>` displays `N/A` in the primary IP address field rather than omitting the field, displaying empty columns, or failing.
-- [ ] **Agent Correlation Workflow:** A CaaS cluster installation can automatically correlate an Assisted Installer agent with the correct BareMetalInstance using the exposed boot MAC address.
+- [ ] **Agent Correlation Workflow:** A CaaS cluster installation automatically correlates an Assisted Installer agent with the correct BareMetalInstance using the exposed boot MAC address, and the cluster installation proceeds to completion without manual host pairing by an administrator.
+- [ ] **Conditional Metadata Synchronization Fallback:** If the platform's existing status refresh capability is validated as missing or insufficient during initial testing, the automated fallback synchronization mechanism successfully updates the BareMetalInstance status with current backend inventory metadata without requiring manual user intervention.
 
 ## Assumptions
 
