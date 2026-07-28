@@ -15,7 +15,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 ## In Scope
 
-- **Network Metadata Exposure:** Surfacing the physical host's boot MAC address and primary IP address (when available in the inventory backend) in the BareMetalInstance status once the instance is provisioned. The primary IP address is expected to be reachable on the tenant's VirtualNetwork (rather than only an infrastructure-level network) to support direct client/SSH connectivity by Tenant Users.
+- **Network Metadata Exposure:** Surfacing the physical host's boot MAC address and primary IP address (when available in the inventory backend) in the BareMetalInstance status once the instance is provisioned. The primary IP address is expected to be reachable on the tenant's VirtualNetwork, rather than only on an infrastructure-level network, enabling self-service Tenant User SSH connections.
 - **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that downstream services and automation can programmatically consume them.
 - **CLI Support:** Displaying the propagated MAC address and IP address in the OSAC CLI when listing or describing a BareMetalInstance.
 - **Seamless Platform Integration:** CaaS can automatically correlate Assisted Installer agents with provisioned BareMetalInstances using the exposed boot MAC address, eliminating manual host pairing.
@@ -75,21 +75,21 @@ Not affected by this feature, as Tenant Admins manage tenant-level policies and 
 
 ## Assumptions
 
-- **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts.
-- **Network Connectivity:** The host's primary IP address surfaced in the inventory is reachable over the tenant's VirtualNetwork or configured routing pathways once the instance is powered on, rather than only on an infrastructure-level network.
-- **Existing Synchronization Capability:** The OSAC platform already possesses an existing capability for administrators to trigger a status refresh of a BareMetalInstance, which will be leveraged to update stale metadata without introducing new user-facing actions or APIs.
+- **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and IP address metadata for all available physical hosts. [Assumption]
+- **Network Connectivity:** The host's primary IP address surfaced in the inventory is reachable over the tenant's VirtualNetwork (rather than only on an infrastructure-level network) once the instance is powered on, enabling self-service Tenant User SSH connections. [Assumption]
+- **Existing Synchronization Capability:** The OSAC platform already possesses an existing capability for administrators to trigger a status refresh of a BareMetalInstance, which will be leveraged to update stale metadata without introducing new user-facing actions or APIs. [Assumption]
 
 ## Dependencies
 
 - **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and primary IP address metadata to enable propagation to the instance status.
-- **Bare Metal Instance Status Refresh Capability:** Verification of the OSAC platform's existing capability to trigger a status refresh of a BareMetalInstance. If this capability is found to be missing or insufficient, a dedicated refresh API or synchronization mechanism must be added as a project dependency.
 - **CaaS / Assisted Installer Integration:** The cluster installer must be capable of consuming the exposed status metadata of the `BareMetalInstance` to correlate registered installer agents.
+- **BareMetalInstance Status Refresh Validation:** Prior to implementation, the platform's existing status refresh capability must be validated to ensure it can update stale metadata. If it is found to be missing or insufficient, a dedicated refresh API or synchronization mechanism must be added to the project dependencies.
 
 ## Risks
 
 - **Stale or Incorrect Inventory Metadata:**
   - *Risk:* The physical host inventory backend contains stale or incorrect MAC or IP address metadata, causing CaaS to fail agent correlation or preventing Tenant Users from connecting.
-  - *Impact / Mitigation:* This is mitigated by ensuring that the status propagation occurs dynamically, and by displaying `N/A` or empty fields when the backend lacks reliable data rather than failing provisioning. Downstream services must handle metadata mismatches gracefully. Since OSAC administrators can leverage the existing platform capability to trigger a status refresh of the BareMetalInstance, they can resolve temporary discrepancies between the physical backend and the BareMetalInstance status without requiring any new UI/CLI APIs.
+  - *Impact / Mitigation:* This is mitigated by ensuring that the status propagation occurs dynamically, and by displaying `N/A` or empty fields when the backend lacks reliable data rather than failing provisioning. Downstream services must handle metadata mismatches gracefully. Since OSAC administrators can leverage the existing platform capability to trigger a status refresh of the BareMetalInstance, they can resolve temporary discrepancies between the physical backend and the BareMetalInstance status without requiring any new UI/CLI APIs. (Note: If the platform's existing refresh capability is found to be missing or insufficient, a dedicated refresh API or synchronization mechanism must be introduced as a project dependency).
 - **Metadata Drift Post-Propagation:**
   - *Risk:* If a physical host's primary IP address is reassigned or modified in the backend inventory after successful propagation, the BareMetalInstance status could become out-of-sync.
   - *Impact / Mitigation:* The propagated status represents a point-of-provisioning snapshot. Any backend inventory updates that occur after the BareMetalInstance has reached the `Ready` state will not automatically overwrite the status unless a manual re-synchronization or instance reboot is initiated by a Cloud Provider Admin.
