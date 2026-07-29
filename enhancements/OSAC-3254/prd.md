@@ -25,8 +25,8 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 - **Network Interface Metadata Exposure:** Surfacing the physical host's boot MAC address and MAC addresses of other physical network interfaces (when available in the BMaaS inventory backend) in the BareMetalInstance status once the instance is provisioned, enabling hardware correlation and downstream usage.
 - **API Availability:** Exposing this metadata via both the Get and List endpoints of the OSAC BareMetalInstance API so that downstream services and automation can programmatically consume them.
 - **CLI Support:** Displaying the propagated boot MAC address and physical interface MACs in the OSAC CLI when listing or describing a BareMetalInstance.
-- **Seamless Platform Integration:** CaaS can automatically correlate Assisted Installer agents with provisioned BareMetalInstances using the exposed boot MAC address, eliminating manual host pairing.
-- **Tenant Isolation and Security:** Enforcing strict namespace boundaries where Tenant Users are restricted to viewing or listing physical network interface MAC address metadata only for BareMetalInstances belonging to their own tenant. The designated Cloud Provider Admin and Cloud Infrastructure Admin roles are explicitly granted elevated authorization to view or list this metadata across all tenants for fleet-wide visibility and administration.
+- **Seamless Platform Integration:** Facilitating subsequent downstream consumer correlation by exposing the reliable boot MAC address in the status. The actual CaaS workflow integration and end-to-end installer agent correlation are deferred to the owning EP/design.
+- **Tenant Isolation and Security:** Enforcing BMaaS tenant authorization as the authoritative boundary where Tenant Users are restricted to viewing or listing physical network interface MAC address metadata only for BareMetalInstances belonging to their own tenant, independently of Kubernetes namespaces. The designated Cloud Provider Admin and Cloud Infrastructure Admin roles are explicitly granted elevated authorization to view or list this metadata across all tenants for fleet-wide visibility and administration.
 
 ## Out of Scope
 
@@ -38,6 +38,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 - **UI Status Visualization:** Designing or implementing the frontend representation of these fields in the OSAC Web Console (deferred to a subsequent UI-specific epic).
 - **Network Interface Reconfiguration:** Allowing tenant users or administrators to modify the physical host's MAC addresses via the BareMetalInstance spec.
 - **Advanced Multi-NIC Mapping:** Surfacing full complex network interface maps (all secondary and tertiary interfaces mapping to logical networks) in the status; only the physical interface MAC addresses (boot MAC and available physical MACs) are in scope.
+- **CaaS Integration and End-to-End Installation Completion:** The actual end-to-end orchestration of CaaS agent-to-instance correlation, integration testing of cluster installations, and network reachability verification of provisioned physical interfaces are out of scope and deferred to the owning EP/design.
 
 ## Milestone Scoping
 
@@ -51,7 +52,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
   - *Existing Resources:* Existing BareMetalInstances will have their status automatically populated with boot MAC and physical interface MAC metadata, and the last successful synchronization timestamp upon upgrade, without requiring reprovisioning or manual intervention.
 - **E2E Testing Expectations:**
   - *Automated E2E Tests:* The metadata propagation workflow from provisioning completion to API/CLI verification, tenant isolation boundaries, and the negative scenarios (empty interface lists / N/A CLI output) must be verified through automated end-to-end integration test suites.
-  - *Manual Verification / Integration Testing:* The end-to-end integration flow of CaaS agent correlation using the boot MAC address will be verified through integrated staging environment runs prior to milestone completion.
+  - *Manual Verification / Integration Testing:* The propagation of boot MAC and physical interface MAC addresses from the backend inventory to the BareMetalInstance status must be verified in a staging environment. The actual end-to-end CaaS integration and network reachability validation are deferred to the owning EP/design.
 
 ## User Stories
 
@@ -68,7 +69,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 ### Tenant Admin
 
-- As a Tenant Admin, I want to view tenant-scoped aggregate visibility of all BareMetalInstances within my tenant namespace, including identifying which instances are missing interface MAC metadata, so that I can monitor provisioning completeness and assist Tenant Users with hardware correlation troubleshooting.
+- As a Tenant Admin, I want to view tenant-scoped aggregate visibility of all BareMetalInstances within my authorized tenant, including identifying which instances are missing interface MAC metadata, so that I can monitor provisioning completeness and assist Tenant Users with hardware correlation troubleshooting.
 
 ### Tenant User
 
@@ -79,26 +80,29 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
 
 - [ ] **Metadata Availability:** The boot MAC address and physical interface MAC addresses are populated and available in the status within 60 seconds of the `BareMetalInstance` entering the `Ready` state. *Rationale: Guaranteeing that MAC address metadata is available in a timely manner when the instance is marked Ready ensures downstream automation services can immediately consume it.*
   - *SLA Fallback Behavior:* If MAC metadata is not available within the 60-second window, downstream consumers continue operating and tolerate delayed metadata without failing provisioning, while administrators are alerted via an observable warning event. Instance provisioning remains in the `Ready` state and is not failed or restarted.
-- [ ] **Tenant Isolation Boundaries:** A Tenant User can only retrieve the MAC address metadata for `BareMetalInstances` within their authorized tenant namespace; requests to retrieve instances in other namespaces are blocked. Cloud Provider Admins and Cloud Infrastructure Admins are authorized to view and list metadata for BareMetalInstances across all tenants.
+- [ ] **Tenant Isolation Boundaries:** BMaaS tenant authorization serves as the authoritative boundary for Get/List MAC metadata access, independently of Kubernetes namespaces. A Tenant User is restricted to retrieving and listing MAC address metadata only for BareMetalInstances belonging to their own tenant; requests to retrieve instances belonging to other tenants are blocked. Cloud Provider Admins and Cloud Infrastructure Admins are authorized to view and list metadata across all tenants.
 - [ ] **API Payload Integrity:** The API Get and List endpoints for BareMetalInstances return the boot MAC address, physical interface MAC addresses, and last successful synchronization timestamp in the status section of the response payload.
-- [ ] **CLI Output Formatting:** The OSAC CLI command `osac baremetalinstance describe <name>` displays the host's boot MAC and physical interface MACs in a dedicated physical interfaces metadata table structure. Additionally, the list command `osac baremetalinstance list` (and the cross-tenant list for authorized administrators) includes dedicated columns for the boot MAC address in its tabular output, maintaining clean formatting.
-- [ ] **Negative Scenarios and Fail-Safe Behavior:** If the backend inventory lacks secondary MAC address metadata for an assigned host, the `BareMetalInstance` status successfully exposes the boot MAC address, while other interface fields remain empty without causing provisioning errors. In this scenario, the OSAC CLI commands `osac baremetalinstance describe <name>` and `osac baremetalinstance list` display `N/A` in missing fields/columns rather than omitting the field, displaying empty columns, or failing.
-- [ ] **Agent Correlation Workflow:** A CaaS cluster installation automatically correlates an Assisted Installer agent with the correct BareMetalInstance using the exposed boot MAC address, and the cluster installation proceeds to completion without manual host pairing by an administrator.
+- [ ] **CLI Output Formatting:** The OSAC CLI command `osac baremetalinstance describe <name>` displays the host's boot MAC and physical interface MACs in a dedicated physical interfaces metadata table structure. Additionally, the list command `osac baremetalinstance list` (and the cross-tenant list for authorized administrators) includes dedicated columns for both the boot MAC address and physical-interface MAC metadata in its tabular output, maintaining clean formatting.
+- [ ] **Negative Scenarios and Fail-Safe Behavior:**
+  - If the backend inventory lacks secondary MAC address metadata for an assigned host, the `BareMetalInstance` status successfully exposes the boot MAC address, while other interface fields remain empty without causing provisioning errors.
+  - If the boot MAC address or the entire inventory record itself is unavailable, the missing values are exposed as `N/A` or empty status fields with an appropriate warning or synchronization state (such as a status condition or warning event indicating metadata unavailability).
+  - In any missing metadata scenario, the OSAC CLI commands `osac baremetalinstance describe <name>` and `osac baremetalinstance list` must continue to display `N/A` in missing fields or columns rather than omitting the field, displaying empty columns, or failing.
+  - The instance's overall provisioning status must explicitly be preserved as `Ready` without encountering errors, failing, or triggering reprovisions.
+- [ ] **Agent Correlation Workflow:** The scope of this PRD is strictly confined to exposing reliable boot MAC metadata in the status of the `BareMetalInstance`. Downstream integration, such as the direct cluster installer mapping and CaaS workflow completion, is deferred to the owning EP/design. The status must expose the boot MAC address to make it programmatically queryable by downstream systems once available.
 - [ ] **Metadata Synchronization:** The BareMetalInstance status metadata must automatically reflect current backend inventory data within 10 minutes of any change, without manual user or administrator intervention.
   - *SLA Fallback Behavior:* If synchronization exceeds the 10-minute SLA, downstream systems continue operating with the last-known cached metadata. The platform will alert administrators when the synchronization SLA is exceeded, ensuring active workloads and the instance status are not interrupted.
 - [ ] **Synchronization Observability:** The `BareMetalInstance` status exposes an observable timestamp indicating the last successful metadata synchronization time, allowing users and administrators to verify that backend inventory synchronization is actively functioning.
 
 ## Assumptions
 
-- **Inventory Metadata Accuracy:** The physical host inventory backend contains valid, pre-populated, and accurate boot MAC address and physical interface MAC metadata for all available physical hosts. [Assumption]
+- **Inventory Metadata Accuracy:** The boot MAC address and physical interface MAC metadata from the physical host inventory backend is expected to be available and accurate, but may be missing or invalid for some physical hosts. This assumption supports the documented fallback and negative acceptance scenarios without guaranteeing metadata for every host.
 
 ## Dependencies
 
-- **Networking EP / Design Integration (Prerequisite):** The tracking and reachability of host IP addresses are decoupled from this feature and are a dependency on the networking EP/design. The physical interfaces must be correctly connected to the tenant's VirtualNetwork as detailed in the networking EP/design to ensure eventual connectivity, though the MAC metadata propagation itself will function independently of IP assignments. [Jira: OSAC-2308]
-- **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and physical interface MAC metadata to enable propagation to the instance status.
-- **CaaS / Assisted Installer Integration:** The cluster installer must be capable of consuming the exposed status metadata of the `BareMetalInstance` to correlate registered installer agents.
-- **Platform Core Synchronization Infrastructure:** The core platform synchronization framework is a dependency required to trigger updates and propagate backend inventory changes dynamically to the BareMetalInstance status. Any required enhancements to this core infrastructure are tracked as a prerequisite dependency under [Jira: OSAC-2308].
+- **Bare Metal Inventory Service API:** The inventory system must provide access to the physical host's boot MAC address and physical interface MAC metadata to enable propagation to the instance status. This is a critical prerequisite to ensure reliable boot MAC metadata exposure.
+- **Platform Core Synchronization Infrastructure:** The core platform synchronization framework is a prerequisite dependency required to trigger updates and propagate backend inventory changes dynamically to the BareMetalInstance status. Any required enhancements to this core infrastructure are tracked as a prerequisite dependency under [Jira: OSAC-2308].
 - **BareMetalInstance Status Refresh:** The platform capability to automatically keep BareMetalInstance metadata synchronized with backend inventory updates. Detailed commitments, SLA metrics, and delivery obligations have been relocated to the owning epic or design document.
+- **Deferred Network and Workflow Integration (Decoupled):** In accordance with scoping this feature strictly to metadata exposure, actual network reachability, tenant VirtualNetwork mapping, CaaS cluster installer integration, and end-to-end installation workflows are completely decoupled from this PRD, require no prerequisite integrations, and are deferred entirely to the owning EP/design.
 
 ## Risks
 
@@ -110,7 +114,7 @@ This creates a critical disconnect for consumers like Cluster as a Service (CaaS
   - *Impact / Mitigation:* This is mitigated by ensuring the BareMetalInstance status metadata is kept up-to-date automatically. The platform automatically updates the BareMetalInstance status when host network interface metadata changes in the backend inventory. No manual user or admin intervention, such as manual re-synchronization, reboot, or reprovisioning, is required to keep the metadata current.
 - **Security Exposure of Host Network Metadata:**
   - *Risk:* Exposing physical host MAC addresses could potentially allow unauthorized reconnaissance or targeted network spoofing if accessed by malicious actors.
-  - *Impact / Mitigation:* This is mitigated by enforcing strict tenant namespace isolation boundaries. Only authorized tenant users can view metadata for instances within their respective namespaces. Additionally, the metadata is read-only and does not grant configuration access to the underlying network infrastructure.
+  - *Impact / Mitigation:* This is mitigated by enforcing strict BMaaS tenant authorization boundaries independently of Kubernetes namespaces. Only authorized tenant users can view metadata for instances belonging to their respective tenants. Additionally, the metadata is read-only and does not grant configuration access to the underlying network infrastructure.
 - **Missed Metadata SLA / Propagation Delay:**
   - *Risk:* Network metadata initial propagation (60 seconds) or synchronization (10 minutes) exceeds the targeted SLA due to backend inventory service delays or network latency.
-  - *Impact / Mitigation:* This could temporarily delay automated CaaS agent-to-instance correlation. Mitigated by designing downstream consumers to gracefully poll and tolerate delayed metadata without failing immediately. Additionally, the BareMetalInstance provisioning state is decoupled from metadata retrieval, preventing transient inventory delays from marking otherwise healthy nodes as failed.
+  - *Impact / Mitigation:* This could temporarily delay downstream correlation. Mitigated by designing downstream consumers to gracefully poll and tolerate delayed metadata without failing immediately. Additionally, the BareMetalInstance provisioning state is decoupled from metadata retrieval, preventing transient inventory delays from marking otherwise healthy nodes as failed.
