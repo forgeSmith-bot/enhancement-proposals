@@ -25,7 +25,7 @@ If this is not addressed, OSAC will suffer from high operational costs due to un
 - **Tenant Isolation & Security:** Complete exclusion of CaaS-managed `BareMetalInstances` and underlying `ComputeImages` from tenant-facing APIs and UI consoles.
 - **Automatic Lifecycle Cleanup:** Provisioned hosts are automatically and securely cleaned up on decommissioning or manual node pool scale-down. Deletion of cluster resources triggers a mandatory, automated, blocking host sanitization (including deep disk wipe and network state reset) before the underlying physical hardware is returned to the general active inventory pool.
 - **Race Prevention:** Isolated registration environments are maintained per cluster to guarantee that agents from different tenants or clusters register to their correct control planes, completely preventing cross-tenant registration races.
-- **Resource Definition:** Integration of `ClusterOrder` specifications with BMaaS resource definitions, allowing tenants to request specific worker node hardware via `ClusterOrder.spec.nodeRequests[].resourceClass`.
+- **Resource Definition:** Integration of `ClusterOrder` specifications with BMaaS resource definitions, allowing tenants to request specific worker node hardware by specifying the resource class in the cluster order.
 
 ## Out of Scope
 
@@ -39,7 +39,7 @@ If this is not addressed, OSAC will suffer from high operational costs due to un
 
 ### Tenant Admin
 
-- As a Tenant Admin, I want to create a `ClusterOrder` specifying supported `BareMetalInstanceTypes` (via `nodeRequests[].resourceClass`) for my worker nodes, so that my Kubernetes/OpenShift clusters are backed by high-performance physical hardware without me having to manage raw infrastructure directly.
+- As a Tenant Admin, I want to create a `ClusterOrder` specifying supported `BareMetalInstanceTypes` by selecting a resource class for my worker nodes, so that my Kubernetes/OpenShift clusters are backed by high-performance physical hardware without me having to manage raw infrastructure directly.
 
 - As a Tenant Admin, I want my resource usage, quotas, and billing to be tracked at the cluster level rather than at the individual bare-metal instance level, so that I can easily budget and monitor my organization's cloud spend.
 
@@ -64,6 +64,6 @@ If this is not addressed, OSAC will suffer from high operational costs due to un
 
 ## Dependencies
 
-- **MAC Address Status Exposure:** BMaaS must expose the physical MAC addresses of the host's network interfaces within the `BareMetalInstance` status to support CaaS host-to-agent correlation `[Jira: OSAC-2308]`.
-- **BareMetalInstanceType Definition:** The `BareMetalInstanceType` specifications and schema definitions must be finalized and available `[PR #59]`.
-- **User Data Pass-through:** BMaaS private API must support the ingestion and pass-through of ignition configurations in the `BareMetalInstance` spec.
+- **MAC Address Status Exposure:** BMaaS must expose the physical MAC addresses of the host's network interfaces within the `BareMetalInstance` status information to support CaaS host-to-agent correlation `[Jira: OSAC-2308]`.
+- **BareMetalInstanceType Definition:** The `BareMetalInstanceType` specifications and schema definitions must be finalized and available `[Jira: OSAC-2675]`.
+- **User Data Pass-through:** BMaaS private API must support the ingestion and pass-through of ignition configurations in the `BareMetalInstance` specifications.
