@@ -25,7 +25,7 @@ If this is not addressed, OSAC will suffer from high operational costs due to un
 - **Tenant Isolation & Security:** Complete exclusion of CaaS-managed `BareMetalInstances` and underlying `ComputeImages` from tenant-facing APIs and UI consoles.
 - **Automatic Lifecycle Cleanup:** Provisioned hosts are automatically and securely cleaned up on decommissioning or manual node pool scale-down. Deletion of cluster resources triggers a mandatory, automated, blocking host sanitization (including deep disk wipe and network state reset) before the underlying physical hardware is returned to the general active inventory pool.
 - **Race Prevention:** Isolated registration environments are maintained per cluster to guarantee that agents from different tenants or clusters register to their correct control planes, completely preventing cross-tenant registration races.
-- **Resource Definition:** Integration of `ClusterOrder` specifications with BMaaS resource definitions, allowing tenants to request specific worker node hardware by specifying the resource class in the cluster order.
+- **Resource Definition:** Integration of `ClusterOrder` specifications with BMaaS resource definitions. Each `nodeRequests[].resourceClass` in the `ClusterOrder` maps deterministically to the corresponding `BareMetalInstanceSpec.instance_type.name`, whose `host_label_selector/match_labels` are passed to BMaaS. Any unsupported or unavailable `resourceClass` values must be explicitly rejected rather than mapped to another hardware class.
 
 ## Out of Scope
 
