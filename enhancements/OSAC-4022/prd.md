@@ -8,52 +8,62 @@
 
 ## Problem Statement
 
-Secrets such as CaaS cluster kubeconfigs, IdP client secrets, storage credentials, and SSH keys are stored as unencrypted fields within resource database tables. Database access exposes sensitive credentials in plaintext, there is no separation of secret lifecycle from resource lifecycle, no way to rotate encryption keys, and no uniform method for retrieving secrets — each resource type requires ad-hoc retrieval (e.g., GetKubeconfig, GetPassword). If unaddressed, the platform cannot enforce encryption at rest, cannot provide consistent access control over sensitive data, and cannot support alternative storage backends for secrets.
+Credentials across OSAC services — cluster kubeconfigs, identity provider secrets, storage credentials, SSH keys — are stored unencrypted alongside the resources that use them. Cloud Infrastructure Admins cannot meet data-at-rest security and compliance requirements because credential data is exposed to anyone with database access. Tenant users cannot revoke or rotate a credential without modifying the resource it belongs to, and retrieving credentials requires learning a different method for each resource type (e.g., GetKubeconfig, GetPassword). There is no single place for a tenant to see what credentials exist or who has access to them.
 
 ## In Scope
 
-- A dedicated Secret resource with full CRUD operations and a uniform API for storing and retrieving secrets across all services (CaaS kubeconfigs, IdP client secrets, storage credentials, SSH keys)
-- Encryption at rest for database-backed secrets, with support for encryption key rotation without requiring simultaneous re-encryption of all stored secrets
-- Pluggable secret backends via a SecretClass abstraction, supporting database storage and hub (Kubernetes) backends; hub backend retrieves secret data on demand from Kubernetes clusters
-- Secret payload is excluded from list responses — only individual secret retrieval returns the decrypted payload
-- SecretReference integration so that existing per-resource secret retrieval (GetKubeconfig, GetPassword) is replaced by a uniform pattern
-- Access control policies for secret access, enforcing tenant isolation
-- CLI support for encryption key configuration
+- Applies to all OSAC services (BMaaS, CaaS, VMaaS, MaaS, Enclave) — any service that creates or consumes credentials
+- Uniform secret management across all OSAC services (CLI and API)
+- Encrypted storage of tenant and platform credentials at rest, with support for encryption key rotation
+- Pluggable secret backends, so cloud providers can bring their own secret store
+- Secret payload excluded from list responses — only individual retrieval returns decrypted data
+- On-demand credential retrieval for provisioned resources (e.g., cluster kubeconfigs, admin passwords)
+- Self-service secret creation for tenants (e.g., SSH key pairs, OIDC client secrets, cloud-init credentials)
+- Automatic secret creation during resource provisioning (e.g., cluster kubeconfigs generated at provision time)
+- Tenant-scoped RBAC for secret access control — OSAC limits its access to only a tenant's secrets when operating on that tenant's behalf
+- Secret CRUD operations complete synchronously with immediate error feedback
+- Installation — cloud provider must deploy and configure a Vault-compatible secret store as a prerequisite
+- E2E testing — secret CRUD, automatic secret creation during provisioning, and tenant isolation require coverage
+- Documentation — user guides for secret management CLI/API workflows per persona; API reference
 
 ## Out of Scope
 
-- External secret manager integration (e.g., HashiCorp Vault) — planned as a future enhancement
-- Automated secret rotation — planned as a future enhancement
+- Secret rotation automation — users can manually update secrets, but automated rotation workflows are not in scope
 - SSH key cloud-init injection for VMs — VMaaS-specific, tracked separately in OSAC-51
+- UI — secret management is CLI and API only for 0.2
 
 ## User Stories
 
 ### Cloud Infrastructure Admin
 
-- As a Cloud Infrastructure Admin, I want secrets encrypted at rest so that database access does not expose sensitive credentials in plaintext.
+- As a Cloud Infrastructure Admin, I want secrets encrypted at rest so that database access does not expose sensitive credentials.
 - As a Cloud Infrastructure Admin, I want to rotate encryption keys without re-encrypting all secrets simultaneously so that key rotation does not require downtime or a bulk migration operation.
-- As a Cloud Infrastructure Admin, I want to configure encryption keys via CLI flags so that I can manage key material as part of platform deployment.
-- As a Cloud Infrastructure Admin, I want to configure pluggable secret backends so that I can choose between database storage and external secret stores based on infrastructure requirements.
 
 ### Cloud Provider Admin
 
-- As a Cloud Provider Admin, I want access control policies to enforce tenant isolation on secrets so that tenants cannot access each other's sensitive data.
+- As a Cloud Provider Admin, I want tenant secrets securely managed and isolated per tenant so that the platform meets data-at-rest compliance requirements.
 - As a Cloud Provider Admin, I want to see secrets scoped to each tenant so that I can verify tenant isolation and manage cross-tenant secret governance.
 
 ### Tenant Admin
 
-- As a Tenant Admin, I want to store and retrieve IdP client secrets through the secrets API so that I can manage identity provider configuration without relying on ad-hoc retrieval methods.
+- As a Tenant Admin, I want to create and manage secrets within my organization (e.g., OIDC client secrets for identity provider integration) so that my team's credentials are centrally managed.
+- As a Tenant Admin, I want to control which users can access secrets through RBAC so that I can enforce credential access policies consistent with other OSAC resources.
 
 ### Tenant User
 
-- As a Tenant User, I want to retrieve my CaaS cluster kubeconfig through the secrets API so that I have a uniform, predictable way to access cluster credentials.
-- As a Tenant User, I want to retrieve passwords and other credentials through the same secrets API so that I do not need to learn different retrieval methods for each resource type.
-- As a Tenant User, I want secret payloads excluded from list responses so that browsing secrets does not inadvertently expose sensitive data.
+- As a Tenant User, I want to create secrets (e.g., SSH key pairs, cloud-init credentials) and reference them when provisioning resources so that I can manage my credentials in one place.
+- As a Tenant User, I want to retrieve credentials for provisioned resources (e.g., cluster kubeconfigs, admin passwords) through the same secret interface I use for my own secrets so that credential access is consistent regardless of how the secret was created.
+- As a Tenant User, I want to list my secrets and see metadata without exposing the actual secret data so that I can browse credentials safely.
+- As a Tenant User, I want to update the value of a secret I own so that I can rotate credentials without recreating resource references.
+- As a Tenant User, I want to delete a secret I no longer need so that stale credentials do not persist in the system.
 
 ## Assumptions
 
-- The existing ad-hoc secret retrieval RPCs (GetKubeconfig, GetPassword) can be replaced by SecretReference-based lookups without breaking existing client workflows, since OSAC does not support in-place upgrades.
+- The Vault-compatible API is a stable and widely supported interface for secret storage.
+- Credentials for provisioned resources (e.g., cluster kubeconfigs) can be retrieved on demand from the management cluster.
+- The existing ad-hoc secret retrieval RPCs (GetKubeconfig, GetPassword) can be replaced by uniform secret lookups without breaking existing client workflows, since OSAC does not support in-place upgrades.
 
 ## Dependencies
 
-- **OSAC-1330 (Type-safe resource references):** Provides the SecretReference type used to link resources to their associated secrets. Must land before SecretReference integration can replace ad-hoc RPCs.
+- **Vault-compatible secret store:** The cloud provider deploys and operates a Vault-compatible secret store and provides OSAC access to use it. Must be in place before secrets can be stored or retrieved.
+- **OSAC-1330 (Type-safe resource references):** Provides the SecretReference type used to link resources to their associated secrets. Must land before ad-hoc RPCs can be replaced by uniform secret lookups.
