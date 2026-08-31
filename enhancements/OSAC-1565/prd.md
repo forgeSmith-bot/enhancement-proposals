@@ -8,7 +8,7 @@
 
 ## Problem Statement
 
-Tenants who need many identical bare metal hosts — for batch computing, cluster node pools, or similar workloads — must create and manage each BareMetalInstance individually. There is no way to declare a desired host count and have the platform maintain it, no single operation to scale capacity up or down, and no aggregate view of provisioning health across a group of hosts. Without a pool abstraction, tenants bear the full burden of tracking individual instance status, replacing failed hosts, and coordinating cleanup when a group is decommissioned.
+Tenants who need many identical bare metal hosts — for batch computing, cluster node pools, or similar workloads — must create and manage each BareMetalInstance individually. There is no way to declare a desired host count and have the platform maintain it, no single operation to scale capacity up or down, and no aggregate view of provisioning health across a group of hosts. Tenants bear the full burden of tracking individual instance status, replacing failed hosts, and coordinating cleanup when a group is decommissioned.
 
 ## In Scope
 
@@ -33,18 +33,12 @@ Tenants who need many identical bare metal hosts — for batch computing, cluste
 
 - Not affected by this feature.
 
-### Tenant Admin
+### Tenant Admin / Tenant User
 
-- As a Tenant Admin, I want to create a BareMetalInstancePool with a desired replica count, catalog item, and network so that my organization's bare metal hosts are provisioned as a group without per-instance management.
-- As a Tenant Admin, I want to scale a pool up or down by updating its replica count so that I can adjust capacity with a single operation.
-- As a Tenant Admin, I want to see aggregate pool status showing how many members are ready, progressing, or failed so that I can monitor provisioning health at a glance.
-- As a Tenant Admin, I want deleting a pool to remove all its member instances so that no orphaned resources remain.
-
-### Tenant User
-
-- As a Tenant User, I want to create a BareMetalInstancePool with a desired replica count, catalog item, and network so that I can provision a group of identical bare metal hosts without managing each one individually.
-- As a Tenant User, I want to scale a pool up or down by updating its replica count so that I can react to changing capacity needs without creating or deleting individual instances.
-- As a Tenant User, I want to see the aggregate status of my pool — ready, progressing, and failed member counts — so that I can track provisioning progress and identify issues.
+- As a Tenant Admin or Tenant User, I want to create a BareMetalInstancePool with a desired replica count, catalog item, and network so that my bare metal hosts are provisioned as a group without per-instance management.
+- As a Tenant Admin or Tenant User, I want to scale a pool up or down by updating its replica count so that I can adjust capacity with a single operation.
+- As a Tenant Admin or Tenant User, I want to see aggregate pool status showing how many members are ready, progressing, or failed so that I can monitor provisioning health at a glance.
+- As a Tenant Admin or Tenant User, I want deleting a pool to remove all its member instances so that no orphaned resources remain.
 
 ## Assumptions
 
